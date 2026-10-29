@@ -33,13 +33,8 @@
       .mobile-bottom-nav { display: none !important; }
       .main-content-area { margin-left: 16rem; padding-bottom: 2rem; }
     }
-    @media (max-width: 767px) {
-      .desktop-sidebar { display: none !important; }
-      .mobile-bottom-nav { display: flex !important; }
-      .main-content-area { margin-left: 0; padding-bottom: 5.5rem; }
-    }
 
-    /* CSS CETAK A4 PORTRAIT REKAPITULASI PRESENSI */
+    /* CSS CETAK DINAMIK BERDASARKAN PILIHAN PENGGUNA */
     @media print {
       body, html {
         margin: 0 !important;
@@ -60,49 +55,53 @@
         margin-left: 0 !important;
         padding: 0 !important;
       }
+
+      /* Default page setup overridden dynamically by print style element if needed */
       @page {
         size: A4 portrait;
         margin: 10mm;
       }
-      .recap-print-container {
-        width: 190mm !important;
+
+      body.printing-daily-detail .recap-print-container {
+        width: 100% !important;
         margin: 0 auto !important;
         background: #ffffff !important;
         box-sizing: border-box !important;
       }
-      .recap-table {
+      body.printing-daily-detail .daily-recap-table {
         width: 100% !important;
         table-layout: fixed !important;
         border-collapse: collapse !important;
-        font-size: 8pt !important;
+        font-size: 7.5pt !important;
       }
-      .recap-table th {
-        font-size: 9pt !important;
+      body.printing-daily-detail .daily-recap-table th {
+        font-size: 8pt !important;
         background-color: #f1f5f9 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        border: 1px solid #475569 !important;
-        padding: 5px 6px !important;
+        border: 1px solid #000 !important;
+        padding: 3px 2px !important;
+        text-align: center !important;
       }
-      .recap-table td {
-        border: 1px solid #475569 !important;
-        padding: 4px 6px !important;
+      body.printing-daily-detail .daily-recap-table td {
+        border: 1px solid #000 !important;
+        padding: 3px 2px !important;
         vertical-align: middle !important;
-        overflow-wrap: break-word;
+        overflow-wrap: anywhere;
         word-wrap: break-word;
       }
-      .recap-table tr {
+      body.printing-daily-detail .daily-recap-table tr {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
       }
-      thead { display: table-header-group !important; }
-      .recap-signature-section {
+      body.printing-daily-detail thead { display: table-header-group !important; }
+      body.printing-daily-detail .recap-signature-section {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
-        margin-top: 20px !important;
+        margin-top: 15px !important;
       }
 
-      /* CSS CETAK KARTU PELAJAR A4 PORTRAIT 2x4 (8 KARTU/HALAMAN) */
+      /* CSS CETAK KARTU PELAJAR 2x4 (8 KARTU/HALAMAN) */
       .cards-print-sheet {
         width: 192mm !important;
         height: 279mm !important;
@@ -154,7 +153,6 @@
   </div>
 
   <script type="module">
-    // Konfigurasi URL Google Apps Script Web App untuk unggah file ke Google Drive
     const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwukd1IjMhjaO4cI_nlKHkSq8ym391sg62hZTvFkcwOn9EhLu0Ly78QOO160v58SeBJSA/exec";
     const IS_PREVIEW = false;
 
@@ -255,6 +253,7 @@
       filterAttClass: 'Semua',
       filterRecapClass: 'Semua',
       filterRecapPeriod: 'Per Bulan',
+      filterRecapType: 'Detail Harian',
       filterRecapMonthYear: '2026-10',
       filterCardClass: 'Semua',
       filterCardSearch: '',
@@ -267,21 +266,40 @@
       isCameraScanning: false,
       cameraDevices: [],
       selectedCameraId: '',
-      tempAttachment: null
+      tempAttachment: null,
+      // Pengaturan Cetak Global per Fitur
+      printSettings: {
+        recap: { paper: 'F4', orientation: 'landscape' },
+        cards: { paper: 'A4', orientation: 'portrait' }
+      }
     };
 
     let html5QrScanner = null;
-    let fallbackVideoStream = null;
     let fallbackScanTimer = null;
+    let fallbackVideoStream = null;
 
-    // FUNGSI CETAK UNIVERSAL DENGAN FORMAT A4 PORTRAIT DAN PENGATURAN HALAMAN
-    window.triggerUniversalPrint = (titleDoc = 'Cetak Dokumen - SDN Gedongboyountung') => {
+    window.updatePrintSetting = (feature, key, value) => {
+      if (!state.printSettings[feature]) state.printSettings[feature] = { paper: 'A4', orientation: 'portrait' };
+      state.printSettings[feature][key] = value;
+      renderApp();
+    };
+
+    window.triggerUniversalPrint = (titleDoc = 'Cetak Dokumen - SDN Gedongboyountung', featureKey = 'recap', isDailyDetail = false) => {
       const printArea = document.getElementById('printable-area') || document.querySelector('main');
       if (!printArea) { window.print(); return; }
-      const printWin = window.open('', '_blank', 'width=800,height=1100');
+      const printWin = window.open('', '_blank', 'width=1100,height=800');
       if (!printWin) { window.print(); return; }
       const cloned = printArea.cloneNode(true);
       cloned.querySelectorAll('.no-print').forEach(el => el.remove());
+
+      const settings = state.printSettings[featureKey] || { paper: 'A4', orientation: 'portrait' };
+      let paperCssSize = '210mm 297mm'; // A4 Portrait
+      if (settings.paper === 'F4') paperCssSize = settings.orientation === 'landscape' ? '330.2mm 215.9mm' : '215.9mm 330.2mm';
+      else if (settings.paper === 'Letter') paperCssSize = settings.orientation === 'landscape' ? '279.4mm 215.9mm' : '215.9mm 279.4mm';
+      else if (settings.paper === 'Legal') paperCssSize = settings.orientation === 'landscape' ? '355.6mm 215.9mm' : '215.9mm 355.6mm';
+      else paperCssSize = settings.orientation === 'landscape' ? '297mm 210mm' : '210mm 297mm';
+
+      const bodyClassAttr = isDailyDetail ? ' class="printing-daily-detail"' : '';
 
       printWin.document.write(`
         <!DOCTYPE html>
@@ -296,33 +314,34 @@
             body { font-family: 'Inter', sans-serif; background: #ffffff; color: #0f172a; padding: 12px; margin: 0; }
             .no-print { display: none !important; }
             .recap-print-container {
-              width: 190mm !important;
+              width: 100% !important;
               margin: 0 auto !important;
               background: #ffffff !important;
               box-sizing: border-box !important;
             }
-            .recap-table {
+            .daily-recap-table {
               width: 100% !important;
               table-layout: fixed !important;
               border-collapse: collapse !important;
-              font-size: 8pt !important;
+              font-size: 7.5pt !important;
             }
-            .recap-table th {
-              font-size: 9pt !important;
+            .daily-recap-table th {
+              font-size: 8pt !important;
               background-color: #f1f5f9 !important;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
-              border: 1px solid #475569 !important;
-              padding: 5px 6px !important;
+              border: 1px solid #000 !important;
+              padding: 3px 2px !important;
+              text-align: center !important;
             }
-            .recap-table td {
-              border: 1px solid #475569 !important;
-              padding: 4px 6px !important;
+            .daily-recap-table td {
+              border: 1px solid #000 !important;
+              padding: 3px 2px !important;
               vertical-align: middle !important;
-              overflow-wrap: break-word;
+              overflow-wrap: anywhere;
               word-wrap: break-word;
             }
-            .recap-table tr {
+            .daily-recap-table tr {
               break-inside: avoid !important;
               page-break-inside: avoid !important;
             }
@@ -330,17 +349,20 @@
             .recap-signature-section {
               break-inside: avoid !important;
               page-break-inside: avoid !important;
-              margin-top: 20px !important;
+              margin-top: 15px !important;
             }
             @media print {
               body { padding: 0; }
-              @page { size: A4 portrait; margin: 10mm; }
+              @page {
+                size: ${paperCssSize};
+                margin: 8mm;
+              }
             }
           </style>
         </head>
-        <body>
+        <body${bodyClassAttr}>
           <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between no-print">
-            <span class="text-xs font-bold text-blue-900">Siap mencetak Rekap A4 Portrait. Klik tombol di kanan jika dialog belum terbuka otomatis:</span>
+            <span class="text-xs font-bold text-blue-900">Siap mencetak (Jenis Kertas: ${settings.paper}, Orientasi: ${settings.orientation}). Klik tombol di kanan jika dialog belum terbuka otomatis:</span>
             <div class="flex gap-2">
               <button onclick="window.print()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer">🖨️ Cetak Sekarang</button>
               <button onclick="window.close()" class="px-3 py-1.5 bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer">Tutup</button>
@@ -421,7 +443,6 @@
 
     function createQRSVG(text, size = 92) {
       const str = String(text || 'SDN-000').trim();
-      // Gunakan library qrcode-generator standar ISO/IEC 18004 (dengan Reed-Solomon ECC) agar 100% terbaca semua scanner
       if (typeof qrcode !== 'undefined') {
         try {
           const qr = qrcode(0, 'M');
@@ -438,16 +459,9 @@
             }
           }
           return `<div class="flex flex-col items-center"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="bg-white rounded-xl border border-slate-200 p-1 shadow-xs mx-auto"><rect width="${size}" height="${size}" fill="#fff" rx="6"/>${rects}</svg><span class="font-mono text-[9px] font-bold text-slate-600 mt-1">${str}</span></div>`;
-        } catch (err) {
-          console.warn('Fallback QR generator error:', err);
-        }
+        } catch (err) {}
       }
 
-      // Fallback Reed-Solomon Version 1-L / 2-L
-      const len = str.length;
-      let version = len > 14 ? 2 : 1;
-      const N = 17 + 4 * version;
-      const cell = size / (N + 4);
       const encoded = encodeURIComponent(str);
       return `<div class="flex flex-col items-center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&ecc=M&margin=2&data=${encoded}" width="${size}" height="${size}" alt="${str}" class="bg-white rounded-xl border border-slate-200 p-1 shadow-xs mx-auto" /><span class="font-mono text-[9px] font-bold text-slate-600 mt-1">${str}</span></div>`;
     }
@@ -619,15 +633,12 @@
       if (role === 'Admin') {
         lbl.textContent = 'Email / Username Admin';
         inp.value = IS_PREVIEW ? 'admin@sdngedong.sch.id' : '';
-        inp.placeholder = 'Masukkan Email Admin (Firebase Auth)';
       } else if (role === 'Guru') {
-        lbl.textContent = 'NIP Guru (Koleksi Firestore)';
+        lbl.textContent = 'NIP Guru';
         inp.value = IS_PREVIEW ? '0545772673230302' : '';
-        inp.placeholder = 'Masukkan NIP Guru';
       } else {
-        lbl.textContent = 'NISN Siswa (Koleksi Firestore)';
+        lbl.textContent = 'NISN Siswa';
         inp.value = IS_PREVIEW ? '3195240210' : '';
-        inp.placeholder = 'Masukkan NISN Siswa';
       }
     };
 
@@ -1532,7 +1543,6 @@
       renderApp();
     };
 
-    // RENDER REKAPITULASI PRESENSI SISWA DENGAN FORMAT A4 PORTRAIT DAN DINAMIC PAGINATION
     function renderRecapView() {
       const effClass = state.filterRecapClass;
       const filteredStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
@@ -1543,27 +1553,167 @@
       const teacherNipForClass = teacherObjForClass?.nip || '-';
       const teacherRoleTitle = effClass !== 'Semua' ? `Wali Kelas ${effClass}` : 'Guru / Petugas';
 
-      const rows = filteredStudents.length === 0
-        ? `<tr><td colspan="8" class="p-4 text-center text-slate-400 font-bold">Belum ada data murid pada kelas ini.</td></tr>`
-        : filteredStudents.map((st, idx) => {
-            const recs = state.attendanceRecords.filter(r => r.studentId === st.id);
-            const h = recs.filter(r => r.status === 'Hadir').length;
-            const t = recs.filter(r => r.status === 'Terlambat').length;
-            const si = recs.filter(r => r.status === 'Sakit' || r.status === 'Izin').length;
-            const a = recs.filter(r => r.status === 'Alpa').length;
-            return `
-              <tr class="text-center">
-                <td style="width: 32px;" class="border border-slate-600 p-1.5">${idx + 1}</td>
-                <td style="width: 85px;" class="border border-slate-600 p-1.5 font-mono">${st.nisn}</td>
-                <td class="border border-slate-600 p-1.5 text-left font-bold">${st.name}</td>
-                <td style="width: 65px;" class="border border-slate-600 p-1.5">${st.classId}</td>
-                <td style="width: 50px;" class="border border-slate-600 p-1.5 font-bold text-emerald-700">${h}</td>
-                <td style="width: 55px;" class="border border-slate-600 p-1.5 font-bold text-amber-700">${t}</td>
-                <td style="width: 60px;" class="border border-slate-600 p-1.5 font-bold text-blue-700">${si}</td>
-                <td style="width: 45px;" class="border border-slate-600 p-1.5 font-bold text-rose-700">${a}</td>
+      const parts = (state.filterRecapMonthYear || '2026-10').split('-');
+      const year = parseInt(parts[0], 10) || 2026;
+      const month = parseInt(parts[1], 10) || 10;
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const monthNameStr = monthNames[month] || 'Oktober';
+
+      let printContainerContent = '';
+
+      if (state.filterRecapType === 'Detail Harian') {
+        let headerDaysHtml = '';
+        for (let d = 1; d <= daysInMonth; d++) {
+          headerDaysHtml += `<th style="width: 20px;" class="border border-slate-600 p-1 text-[7.5pt]">${d}</th>`;
+        }
+
+        const dailyRows = filteredStudents.length === 0
+          ? `<tr><td colspan="${daysInMonth + 6}" class="p-4 text-center text-slate-400 font-bold">Belum ada data murid pada kelas ini.</td></tr>`
+          : filteredStudents.map((st, idx) => {
+              let dayCells = '';
+              let countH = 0, countI = 0, countS = 0, countA = 0;
+
+              for (let d = 1; d <= daysInMonth; d++) {
+                const dayStr = String(d).padStart(2, '0');
+                const monthStr = String(month).padStart(2, '0');
+                const dateKey = `${year}-${monthStr}-${dayStr}`;
+
+                const rec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === dateKey);
+                let mark = '';
+                if (rec) {
+                  if (rec.status === 'Hadir') { mark = 'H'; countH++; }
+                  else if (rec.status === 'Terlambat') { mark = 'T'; countH++; }
+                  else if (rec.status === 'Izin') { mark = 'I'; countI++; }
+                  else if (rec.status === 'Sakit') { mark = 'S'; countS++; }
+                  else if (rec.status === 'Alpa') { mark = 'A'; countA++; }
+                }
+                dayCells += `<td style="width: 20px;" class="border border-slate-600 p-1 text-center font-bold text-[7.5pt]">${mark}</td>`;
+              }
+
+              return `
+                <tr>
+                  <td style="width: 28px;" class="border border-slate-600 p-1 text-center">${idx + 1}</td>
+                  <td class="border border-slate-600 p-1.5 text-left font-bold" style="overflow-wrap: anywhere; word-wrap: break-word; min-width: 110px;">${st.name}</td>
+                  ${dayCells}
+                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-emerald-700">${countH}</td>
+                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-indigo-700">${countI}</td>
+                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-blue-700">${countS}</td>
+                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-rose-700">${countA}</td>
+                </tr>
+              `;
+            }).join('');
+
+        printContainerContent = `
+          <div class="border-b-2 border-slate-900 pb-3 flex items-center gap-4">
+            <div class="shrink-0">${renderSchoolLogoHtml("w-12 h-12", "text-xs")}</div>
+            <div class="flex-1 text-center">
+              <h2 class="text-xs font-black uppercase text-slate-900">PEMERINTAH KABUPATEN LAMONGAN</h2>
+              <h3 class="text-sm font-black uppercase text-blue-900">${state.schoolInfo.name || 'SDN GEDONGBOYOUNTUNG'}</h3>
+              <p class="text-[10px] text-slate-600">${state.schoolInfo.address || ''} • NPSN: ${state.schoolInfo.npsn || '20506021'}</p>
+              <p class="text-xs font-bold text-slate-800 mt-1 uppercase">REKAPITULASI KEHADIRAN SISWA — BULAN ${monthNameStr.toUpperCase()} ${year} — KELAS: ${effClass.toUpperCase()}</p>
+            </div>
+          </div>
+
+          <table class="daily-recap-table w-full text-[7.5pt] border-collapse border border-slate-600">
+            <thead>
+              <tr class="bg-slate-100 font-bold text-center">
+                <th rowspan="2" style="width: 28px;" class="border border-slate-600 p-1">No.</th>
+                <th rowspan="2" class="border border-slate-600 p-1 text-left" style="min-width: 110px;">Nama Siswa</th>
+                <th colspan="${daysInMonth}" class="border border-slate-600 p-1">Tanggal (1 - ${daysInMonth})</th>
+                <th colspan="4" class="border border-slate-600 p-1">Jumlah</th>
               </tr>
-            `;
-          }).join('');
+              <tr class="bg-slate-100 font-bold text-center">
+                ${headerDaysHtml}
+                <th style="width: 24px;" class="border border-slate-600 p-1">H</th>
+                <th style="width: 24px;" class="border border-slate-600 p-1">I</th>
+                <th style="width: 24px;" class="border border-slate-600 p-1">S</th>
+                <th style="width: 24px;" class="border border-slate-600 p-1">A</th>
+              </tr>
+            </thead>
+            <tbody>${dailyRows}</tbody>
+          </table>
+
+          <div class="recap-signature-section pt-5 flex justify-between text-xs text-center font-bold">
+            <div style="width: 220px;">
+              <p class="mb-14">Mengetahui,<br/>Kepala Sekolah</p>
+              <p class="underline font-bold">${state.schoolInfo.principal || '-'}</p>
+              <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
+            </div>
+            <div style="width: 220px;">
+              <p class="mb-14">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
+              <p class="underline font-bold">${teacherNameForClass}</p>
+              <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
+            </div>
+          </div>
+        `;
+      } else {
+        const rows = filteredStudents.length === 0
+          ? `<tr><td colspan="8" class="p-4 text-center text-slate-400 font-bold">Belum ada data murid pada kelas ini.</td></tr>`
+          : filteredStudents.map((st, idx) => {
+              const recs = state.attendanceRecords.filter(r => r.studentId === st.id);
+              const h = recs.filter(r => r.status === 'Hadir').length;
+              const t = recs.filter(r => r.status === 'Terlambat').length;
+              const si = recs.filter(r => r.status === 'Sakit' || r.status === 'Izin').length;
+              const a = recs.filter(r => r.status === 'Alpa').length;
+              return `
+                <tr class="text-center">
+                  <td style="width: 32px;" class="border border-slate-600 p-1.5">${idx + 1}</td>
+                  <td style="width: 85px;" class="border border-slate-600 p-1.5 font-mono">${st.nisn}</td>
+                  <td class="border border-slate-600 p-1.5 text-left font-bold">${st.name}</td>
+                  <td style="width: 65px;" class="border border-slate-600 p-1.5">${st.classId}</td>
+                  <td style="width: 50px;" class="border border-slate-600 p-1.5 font-bold text-emerald-700">${h}</td>
+                  <td style="width: 55px;" class="border border-slate-600 p-1.5 font-bold text-amber-700">${t}</td>
+                  <td style="width: 60px;" class="border border-slate-600 p-1.5 font-bold text-blue-700">${si}</td>
+                  <td style="width: 45px;" class="border border-slate-600 p-1.5 font-bold text-rose-700">${a}</td>
+                </tr>
+              `;
+            }).join('');
+
+        printContainerContent = `
+          <div class="border-b-2 border-slate-900 pb-4 flex items-center gap-4">
+            <div class="shrink-0">${renderSchoolLogoHtml("w-14 h-14", "text-sm")}</div>
+            <div class="flex-1 text-center">
+              <h2 class="text-sm font-black uppercase text-slate-900">PEMERINTAH KABUPATEN LAMONGAN</h2>
+              <h3 class="text-base font-black uppercase text-blue-900">${state.schoolInfo.name || 'SDN GEDONGBOYOUNTUNG'}</h3>
+              <p class="text-[11px] text-slate-600">${state.schoolInfo.address || ''} • NPSN: ${state.schoolInfo.npsn || '20506021'}</p>
+              <p class="text-xs font-bold text-slate-800 mt-1 uppercase">REKAPITULASI PRESENSI SISWA — KELAS: ${effClass.toUpperCase()} (${state.filterRecapPeriod}: ${state.filterRecapMonthYear})</p>
+            </div>
+          </div>
+
+          <table class="recap-table w-full text-xs border-collapse border border-slate-600">
+            <thead>
+              <tr class="bg-slate-100 font-bold text-center">
+                <th style="width: 32px;" class="border border-slate-600 p-1.5">No</th>
+                <th style="width: 85px;" class="border border-slate-600 p-1.5">NISN</th>
+                <th class="border border-slate-600 p-1.5 text-left">Nama Siswa</th>
+                <th style="width: 65px;" class="border border-slate-600 p-1.5">Kelas</th>
+                <th style="width: 50px;" class="border border-slate-600 p-1.5">Hadir</th>
+                <th style="width: 55px;" class="border border-slate-600 p-1.5">Terlambat</th>
+                <th style="width: 60px;" class="border border-slate-600 p-1.5">Sakit/Izin</th>
+                <th style="width: 45px;" class="border border-slate-600 p-1.5">Alpa</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          <div class="recap-signature-section pt-8 flex justify-between text-xs text-center font-bold">
+            <div style="width: 220px;">
+              <p class="mb-14">Mengetahui,<br/>Kepala Sekolah</p>
+              <p class="underline font-bold">${state.schoolInfo.principal || '-'}</p>
+              <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
+            </div>
+            <div style="width: 220px;">
+              <p class="mb-14">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
+              <p class="underline font-bold">${teacherNameForClass}</p>
+              <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
+            </div>
+          </div>
+        `;
+      }
+
+      const currentRecapSet = state.printSettings.recap || { paper: 'F4', orientation: 'landscape' };
 
       return `
         <div class="space-y-4">
@@ -1573,6 +1723,11 @@
               <select onchange="window.updateRecapClass(this.value)" class="p-2 border rounded-xl text-xs font-bold">
                 <option value="Semua" ${effClass === 'Semua' ? 'selected' : ''}>Semua Kelas</option>
                 ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${effClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+
+              <select onchange="window.updateRecapType(this.value)" class="p-2 border rounded-xl text-xs font-bold bg-amber-50 text-amber-900 border-amber-200">
+                <option value="Detail Harian" ${state.filterRecapType === 'Detail Harian' ? 'selected' : ''}>📊 Cetak Rekap Bulanan Detail Harian</option>
+                <option value="Rekap Jumlah" ${state.filterRecapType === 'Rekap Jumlah' ? 'selected' : ''}>📄 Cetak Rekap Jumlah</option>
               </select>
 
               <select onchange="window.updateRecapPeriod(this.value)" class="p-2 border rounded-xl text-xs font-bold bg-blue-50 text-blue-900 border-blue-200">
@@ -1585,58 +1740,44 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-              <button onclick="window.downloadRecapMonthly()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📥 Unduh Bulanan</button>
-              <button onclick="window.downloadRecapSemester()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📥 Unduh Semester</button>
-              <button onclick="window.downloadRecapYearly()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📥 Unduh Tahunan</button>
-              <button onclick="window.triggerUniversalPrint('Rekap Presensi - SDN Gedongboyountung')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">🖨️ Cetak Laporan</button>
+              <button onclick="window.downloadRecapMonthly()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer">📥 Unduh Bulanan</button>
+              <button onclick="window.downloadRecapSemester()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer">📥 Unduh Semester</button>
+              <button onclick="window.downloadRecapYearly()" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold cursor-pointer">📥 Unduh Tahunan</button>
             </div>
           </div>
 
-          <div id="printable-area" class="bg-white p-8 rounded-3xl border border-slate-200 recap-print-container space-y-6 mx-auto">
-            <div class="border-b-2 border-slate-900 pb-4 flex items-center gap-4">
-              <div class="shrink-0">${renderSchoolLogoHtml("w-14 h-14", "text-sm")}</div>
-              <div class="flex-1 text-center">
-                <h2 class="text-sm font-black uppercase text-slate-900">PEMERINTAH KABUPATEN LAMONGAN</h2>
-                <h3 class="text-base font-black uppercase text-blue-900">${state.schoolInfo.name || 'SDN GEDONGBOYOUNTUNG'}</h3>
-                <p class="text-[11px] text-slate-600">${state.schoolInfo.address || ''} • NPSN: ${state.schoolInfo.npsn || '20506021'}</p>
-                <p class="text-xs font-bold text-slate-800 mt-1 uppercase">REKAPITULASI PRESENSI SISWA — KELAS: ${effClass.toUpperCase()} (${state.filterRecapPeriod}: ${state.filterRecapMonthYear})</p>
-              </div>
-            </div>
+          <!-- PENGATURAN CETAK INTERAKTIF KHUSUS MENU REKAP -->
+          <div class="bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 no-print">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black text-blue-900">⚙️ Pengaturan Cetak:</span>
+              <label class="text-xs font-bold text-slate-700 ml-2">Jenis Kertas:</label>
+              <select onchange="window.updatePrintSetting('recap', 'paper', this.value)" class="p-1.5 border rounded-xl text-xs font-bold bg-white text-blue-900 cursor-pointer">
+                <option value="F4" ${currentRecapSet.paper === 'F4' ? 'selected' : ''}>F4 / Folio</option>
+                <option value="A4" ${currentRecapSet.paper === 'A4' ? 'selected' : ''}>A4</option>
+                <option value="Letter" ${currentRecapSet.paper === 'Letter' ? 'selected' : ''}>Letter</option>
+                <option value="Legal" ${currentRecapSet.paper === 'Legal' ? 'selected' : ''}>Legal</option>
+              </select>
 
-            <table class="recap-table w-full text-xs border-collapse border border-slate-600">
-              <thead>
-                <tr class="bg-slate-100 font-bold text-center">
-                  <th style="width: 32px;" class="border border-slate-600 p-1.5">No</th>
-                  <th style="width: 85px;" class="border border-slate-600 p-1.5">NISN</th>
-                  <th class="border border-slate-600 p-1.5 text-left">Nama Siswa</th>
-                  <th style="width: 65px;" class="border border-slate-600 p-1.5">Kelas</th>
-                  <th style="width: 50px;" class="border border-slate-600 p-1.5">Hadir</th>
-                  <th style="width: 55px;" class="border border-slate-600 p-1.5">Terlambat</th>
-                  <th style="width: 60px;" class="border border-slate-600 p-1.5">Sakit/Izin</th>
-                  <th style="width: 45px;" class="border border-slate-600 p-1.5">Alpa</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-
-            <div class="recap-signature-section pt-6 flex justify-between text-xs text-center font-bold">
-              <div style="width: 220px;">
-                <p class="mb-14">Mengetahui,<br/>Kepala Sekolah</p>
-                <p class="underline font-bold">${state.schoolInfo.principal || '-'}</p>
-                <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
-              </div>
-              <div style="width: 220px;">
-                <p class="mb-14">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
-                <p class="underline font-bold">${teacherNameForClass}</p>
-                <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
-              </div>
+              <label class="text-xs font-bold text-slate-700 ml-2">Orientasi:</label>
+              <select onchange="window.updatePrintSetting('recap', 'orientation', this.value)" class="p-1.5 border rounded-xl text-xs font-bold bg-white text-blue-900 cursor-pointer">
+                <option value="landscape" ${currentRecapSet.orientation === 'landscape' ? 'selected' : ''}>Landscape (Mendatar)</option>
+                <option value="portrait" ${currentRecapSet.orientation === 'portrait' ? 'selected' : ''}>Portrait (Tegak)</option>
+              </select>
             </div>
+            <button onclick="window.triggerUniversalPrint('Rekap Presensi - SDN Gedongboyountung', 'recap', ${state.filterRecapType === 'Detail Harian'})" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-md flex items-center gap-1.5">
+              🖨️ Cetak Laporan
+            </button>
+          </div>
+
+          <div id="printable-area" class="bg-white p-8 rounded-3xl border border-slate-200 recap-print-container space-y-6 mx-auto overflow-x-auto">
+            ${printContainerContent}
           </div>
         </div>
       `;
     }
 
     window.updateRecapClass = (v) => { state.filterRecapClass = v; renderApp(); };
+    window.updateRecapType = (v) => { state.filterRecapType = v; renderApp(); };
     window.updateRecapPeriod = (v) => { state.filterRecapPeriod = v; renderApp(); };
     window.updateRecapMonthYear = (v) => { state.filterRecapMonthYear = v; renderApp(); };
 
@@ -1731,6 +1872,8 @@
           </div>
         `).join('');
 
+      const currentCardSet = state.printSettings.cards || { paper: 'A4', orientation: 'portrait' };
+
       return `
         <div class="space-y-4">
           <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3 no-print">
@@ -1748,9 +1891,32 @@
               ${!onlyMine ? `
                 <button onclick="window.openCameraScannerModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📷 Scan QR Pakai Kamera</button>
               ` : ''}
-              <button onclick="window.triggerUniversalPrint('Kartu Pelajar QR - SDN Gedongboyountung')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">🖨️ Cetak Kartu (${list.length})</button>
             </div>
           </div>
+
+          <!-- PENGATURAN CETAK KARTU -->
+          <div class="bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 no-print">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black text-blue-900">⚙️ Pengaturan Cetak:</span>
+              <label class="text-xs font-bold text-slate-700 ml-2">Jenis Kertas:</label>
+              <select onchange="window.updatePrintSetting('cards', 'paper', this.value)" class="p-1.5 border rounded-xl text-xs font-bold bg-white text-blue-900 cursor-pointer">
+                <option value="A4" ${currentCardSet.paper === 'A4' ? 'selected' : ''}>A4</option>
+                <option value="F4" ${currentCardSet.paper === 'F4' ? 'selected' : ''}>F4 / Folio</option>
+                <option value="Letter" ${currentCardSet.paper === 'Letter' ? 'selected' : ''}>Letter</option>
+                <option value="Legal" ${currentCardSet.paper === 'Legal' ? 'selected' : ''}>Legal</option>
+              </select>
+
+              <label class="text-xs font-bold text-slate-700 ml-2">Orientasi:</label>
+              <select onchange="window.updatePrintSetting('cards', 'orientation', this.value)" class="p-1.5 border rounded-xl text-xs font-bold bg-white text-blue-900 cursor-pointer">
+                <option value="portrait" ${currentCardSet.orientation === 'portrait' ? 'selected' : ''}>Portrait (Tegak)</option>
+                <option value="landscape" ${currentCardSet.orientation === 'landscape' ? 'selected' : ''}>Landscape (Mendatar)</option>
+              </select>
+            </div>
+            <button onclick="window.triggerUniversalPrint('Kartu Pelajar QR - SDN Gedongboyountung', 'cards', false)" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-md flex items-center gap-1.5">
+              🖨️ Cetak Kartu (${list.length})
+            </button>
+          </div>
+
           <div id="printable-area">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">${screenCardsHtml}</div>
             <div class="hidden print:block">${sheetsHtml}</div>
@@ -1766,7 +1932,6 @@
     let lastScannedTime = 0;
     let scanFrameCount = 0;
 
-    // Helper Pembaruan Diagnostik Visual Scanner
     window.updateScannerDiagnostics = ({ camState, scanState, rawResult, errorMsg }) => {
       const camEl = document.getElementById('diag-cam-status');
       const scanEl = document.getElementById('diag-scan-status');
@@ -1786,21 +1951,16 @@
       }
     };
 
-    // Callback Utama Pemrosesan Hasil QR Code (Terhubung langsung ke fungsi recordAttendance yang sama dengan Input Manual)
     window.processDetectedQrCode = async (rawQrText, sourceLabel = 'Kamera QR') => {
       if (!rawQrText) return;
       const rawStr = String(rawQrText).trim();
       if (!rawStr) return;
 
-      // Cooldown 2.5 detik untuk mencegah scan beruntun pada kartu yang sama
       const now = Date.now();
-      if (rawStr === lastScannedCode && now - lastScannedTime < 2500) {
-        return;
-      }
+      if (rawStr === lastScannedCode && now - lastScannedTime < 2500) return;
       lastScannedCode = rawStr;
       lastScannedTime = now;
 
-      // 1. Tampilkan hasil teks QR Code mentah pada diagnostik
       window.updateScannerDiagnostics({
         scanState: '🎯 QR Code Berhasil Terbaca!',
         rawResult: rawStr,
@@ -1813,14 +1973,12 @@
         resEl.textContent = `🔍 QR Terbaca: "${rawStr}" — Mencari data siswa...`;
       }
 
-      // 2. Normalisasi hasil sesuai format QR SISGENTA (contoh: "SISWA-3195240210" atau JSON/teks menjadi NISN murni)
       let normalizedNisn = rawStr.replace(/^SISWA[-_:\s]*/i, '').trim();
       const digitMatch = normalizedNisn.match(/\d{4,20}/);
       if (digitMatch && !state.students.some(s => String(s.nisn).trim() === normalizedNisn)) {
         normalizedNisn = digitMatch[0];
       }
 
-      // 3. Cari data siswa berdasarkan NISN atau ID
       const matchedStudent = state.students.find(s =>
         String(s.nisn).trim() === normalizedNisn ||
         String(s.nisn).trim() === rawStr ||
@@ -1842,10 +2000,8 @@
         return;
       }
 
-      // 4. Panggil fungsi absensi yang sama persis dengan input manual
       await window.recordAttendance(matchedStudent.nisn, 'Hadir', sourceLabel);
 
-      // 5. Tampilkan hasil absensi pada modal agar scanner tetap bisa memindai siswa berikutnya
       const modal = document.getElementById('modal-camera-scanner');
       if (modal && state.isCameraScanning) {
         modal.classList.remove('hidden');
@@ -1865,7 +2021,6 @@
       }
     };
 
-    // Loop Decoding Frame Video secara Langsung menggunakan Canvas + jsQR + BarcodeDetector
     function attachContinuousVideoDecoder(videoElement) {
       if (fallbackScanTimer) {
         clearInterval(fallbackScanTimer);
@@ -1894,7 +2049,6 @@
           }
         }
 
-        // Metode A: jsQR pada ImageData Canvas (Bekerja di semua browser: Chrome, Safari, Edge, Firefox)
         if (typeof jsQR !== 'undefined') {
           try {
             canvas.width = vid.videoWidth;
@@ -1911,7 +2065,6 @@
           } catch (e) {}
         }
 
-        // Metode B: Native BarcodeDetector API
         if (nativeDetector) {
           try {
             const barcodes = await nativeDetector.detect(vid);
@@ -1950,7 +2103,6 @@
         resEl.textContent = "⏳ Sedang menghubungkan ke kamera perangkat...";
       }
 
-      // 1. Coba inisialisasi dengan Html5Qrcode + Pasang juga decoder kanvas jsQR paralel
       if (typeof Html5Qrcode !== 'undefined') {
         try {
           html5QrScanner = new Html5Qrcode("qr-reader-box");
@@ -2007,19 +2159,15 @@
               resEl.className = "text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200";
               resEl.textContent = "✅ Kamera Aktif! Arahkan Kartu QR Pelajar ke kotak kamera.";
             }
-            // Jalankan juga loop pembacaan kanvas jsQR pada elemen video Html5Qrcode agar deteksi 2x lebih responsif
             setTimeout(() => {
               const innerVideo = document.querySelector('#qr-reader-box video');
               if (innerVideo) attachContinuousVideoDecoder(innerVideo);
             }, 400);
             return;
           }
-        } catch (err) {
-          console.warn("Html5Qrcode init warning:", err);
-        }
+        } catch (err) {}
       }
 
-      // 2. Fallback Native getUserMedia + Continuous jsQR & BarcodeDetector Loop
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
           let stream = null;
@@ -2051,7 +2199,6 @@
           }
           return;
         } catch (err) {
-          console.error("Native camera fallback error:", err);
           window.updateScannerDiagnostics({
             camState: '🔴 Kamera Gagal Dibuka',
             scanState: 'Berhenti',
@@ -2079,7 +2226,6 @@
         resEl.textContent = "⏳ Memindai gambar QR Code...";
       }
 
-      // 1. Coba decode menggunakan jsQR melalui Canvas Image terlebih dahulu (tidak mematikan kamera yang sedang aktif)
       if (typeof jsQR !== 'undefined') {
         try {
           const decodedFromImg = await new Promise((resolve) => {
@@ -2110,7 +2256,6 @@
         } catch {}
       }
 
-      // 2. Fallback menggunakan Html5Qrcode scanFile
       try {
         if (typeof Html5Qrcode !== 'undefined') {
           if (html5QrScanner && html5QrScanner.isScanning) {
@@ -2513,9 +2658,7 @@
         try {
           const docIdToDelete = targetItem?.firestoreDocId || targetId;
           await deleteDoc(doc(db, 'journals', String(docIdToDelete)));
-        } catch (err) {
-          console.warn("Firestore delete info:", err);
-        }
+        } catch (err) {}
       }
       showToast('Jurnal berhasil dihapus dari tampilan!');
     };
@@ -2800,7 +2943,6 @@
 
               <div id="qr-reader-box" class="w-full min-h-[220px] bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center text-white text-xs"></div>
 
-              <!-- Panel Diagnostik Visual Real-Time -->
               <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-left space-y-1 text-[11px]">
                 <div class="font-black text-slate-700 uppercase tracking-wider text-[10px]">📊 Diagnostik Scanner Real-Time</div>
                 <div class="flex justify-between gap-2"><span class="text-slate-500">Status Kamera:</span><span id="diag-cam-status" class="font-bold text-emerald-700">Menyiapkan...</span></div>
@@ -2827,7 +2969,7 @@
                   </select>
                   <input type="text" id="modal-manual-nisn" placeholder="NISN..." class="w-1/2 p-2 border rounded-xl text-xs font-mono font-bold" />
                 </div>
-                <button onclick="window.recordAttendance(document.getElementById('modal-manual-nisn').value, 'Hadir', 'Scan Manual')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">✅ Catat Hadir Sekarang</button>
+                <button onclick="window.recordAttendance(document.getElementById('modal-manual-nisn').value, 'Hadir', 'Scan Manual')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer shadow-xs">✅ Catat Hadir Sekarang</button>
               </div>
             </div>
           </div>
