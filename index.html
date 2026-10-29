@@ -28,13 +28,18 @@
       background-color: #f8fafc;
       z-index: 99999;
     }
+
+    /* RESPONSIVE NAVIGATION STYLING */
+    .desktop-sidebar { display: none; }
+    .mobile-bottom-nav { display: flex; }
+
     @media (min-width: 768px) {
       .desktop-sidebar { display: flex !important; }
       .mobile-bottom-nav { display: none !important; }
       .main-content-area { margin-left: 16rem; padding-bottom: 2rem; }
     }
 
-    /* CSS CETAK DINAMIK BERDASARKAN PILIHAN PENGGUNA */
+    /* CSS CETAK DINAMIK BERDASARKAN PILIHAN PENGGUNA (DIISOLASI KEDALAM @media print) */
     @media print {
       body, html {
         margin: 0 !important;
@@ -56,7 +61,6 @@
         padding: 0 !important;
       }
 
-      /* Default page setup overridden dynamically by print style element if needed */
       @page {
         size: A4 portrait;
         margin: 10mm;
@@ -101,7 +105,6 @@
         margin-top: 15px !important;
       }
 
-      /* CSS CETAK KARTU PELAJAR 2x4 (8 KARTU/HALAMAN) */
       .cards-print-sheet {
         width: 192mm !important;
         height: 279mm !important;
@@ -2905,7 +2908,7 @@
             </div>
           </aside>
 
-          <div class="main-content-area flex-1 flex flex-col min-h-screen">
+          <div class="main-content-area flex-1 flex flex-col min-h-screen pb-20 md:pb-6">
             <header class="sticky top-0 z-30 glass-card px-4 py-3 flex items-center justify-between no-print">
               <div class="font-black text-slate-800 text-sm sm:text-base">
                 ${menus.find(m => m.id === state.activeTab)?.label || 'Dashboard'}
@@ -2920,10 +2923,10 @@
             </main>
           </div>
 
-          <nav class="mobile-bottom-nav fixed bottom-3 left-3 right-3 glass-card rounded-2xl shadow-2xl p-1.5 justify-around items-center z-50 border border-slate-200 overflow-x-auto">
+          <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md shadow-2xl p-2 justify-around items-center z-50 border-t border-slate-200 overflow-x-auto">
             ${menus.map(m => `
-              <button onclick="window.switchTab('${m.id}')" class="flex flex-col items-center py-1.5 px-2 rounded-xl text-[10px] font-bold shrink-0 ${state.activeTab === m.id ? 'bg-blue-600 text-white' : 'text-slate-600'}">
-                <span class="text-sm">${m.icon}</span>
+              <button onclick="window.switchTab('${m.id}')" class="flex flex-col items-center py-1 px-2 rounded-xl text-[10px] font-bold shrink-0 ${state.activeTab === m.id ? 'bg-blue-600 text-white' : 'text-slate-600'}">
+                <span class="text-base">${m.icon}</span>
                 <span class="truncate max-w-[56px]">${m.label}</span>
               </button>
             `).join('')}
