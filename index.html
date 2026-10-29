@@ -156,7 +156,7 @@
   </div>
 
   <script type="module">
-    const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwukd1IjMhjaO4cI_nlKHkSq8ym391sg62hZTvFkcwOn9EhLu0Ly78QOO160v58SeBJSA/exec";
+    const GOOGLE_APPS_SCRIPT_URL = "hhttps://script.google.com/macros/s/AKfycbwukd1IjMhjaO4cI_nlKHkSq8ym391sg62hZTvFkcwOn9EhLu0Ly78QOO160v58SeBJSA/exec";
     const IS_PREVIEW = false;
 
     const firebaseConfig = {
@@ -2360,7 +2360,7 @@
           }).join('');
 
       return `
-        <div class="space-y-4 pb-20 md:pb-6">
+        <div class="space-y-4 pb-24 md:pb-6">
           <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3">
             <div class="flex flex-wrap items-center gap-2">
               <h3 class="font-black text-sm mr-2">Jurnal 7 Kebiasaan Anak Indonesia Hebat</h3>
@@ -2389,59 +2389,68 @@
             </div>
           </div>
 
-          <div id="modal-add-journal" class="hidden fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-3 sm:p-4">
-            <div class="bg-white max-w-lg w-full rounded-3xl p-5 sm:p-6 space-y-4 max-h-[88vh] sm:max-h-[92vh] overflow-y-auto mb-16 sm:mb-0 pb-28 sm:pb-6 shadow-2xl border border-slate-200">
-              <div class="flex justify-between items-center border-b pb-2">
+          <!-- MODAL TAMBAH JURNAL DENGAN STRUKTUR FLEXBOX 3 BAGIAN YANG KOKOH & AMAN DI MOBILE -->
+          <div id="modal-add-journal" class="hidden fixed inset-0 bg-black/60 z-[99999] flex items-center justify-center p-2 sm:p-4">
+            <div class="bg-white max-w-lg w-full rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden mb-16 sm:mb-0">
+              
+              <!-- 1. HEADER MODAL (STICKY / FIXED FLEX-SHRINK 0) -->
+              <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
                 <h3 class="font-black text-base text-slate-900">Tambah Jurnal Karakter & Bukti</h3>
-                <button onclick="document.getElementById('modal-add-journal').classList.add('hidden')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold cursor-pointer">Batal</button>
+                <button type="button" onclick="document.getElementById('modal-add-journal').classList.add('hidden')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold cursor-pointer">Batal</button>
               </div>
 
-              <form onsubmit="window.saveJournal(event)" class="space-y-3.5 text-xs pb-10">
-                ${!isSiswa ? `
+              <!-- 2. BODY MODAL (SCROLLABLE AREA) -->
+              <div class="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
+                <form id="form-add-journal" onsubmit="window.saveJournal(event)" class="space-y-4 text-xs">
+                  ${!isSiswa ? `
+                    <div>
+                      <label class="font-bold block mb-1 text-slate-700">Pilih Murid *</label>
+                      <select id="jr-student" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50 text-slate-900">
+                        ${state.students.map(s => `<option value="${s.id}">${s.name} (${s.classId})</option>`).join('')}
+                      </select>
+                    </div>
+                  ` : ''}
                   <div>
-                    <label class="font-bold block mb-1">Pilih Murid *</label>
-                    <select id="jr-student" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50">
-                      ${state.students.map(s => `<option value="${s.id}">${s.name} (${s.classId})</option>`).join('')}
+                    <label class="font-bold block mb-1 text-slate-700">Kategori 7 Kebiasaan *</label>
+                    <select id="jr-category" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50 text-slate-900">
+                      ${ACTIVITY_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
                     </select>
                   </div>
-                ` : ''}
-                <div>
-                  <label class="font-bold block mb-1">Kategori 7 Kebiasaan *</label>
-                  <select id="jr-category" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50">
-                    ${ACTIVITY_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
-                  </select>
-                </div>
-                <div>
-                  <label class="font-bold block mb-1">Judul Kegiatan *</label>
-                  <input type="text" id="jr-title" required placeholder="Contoh: Salat Subuh Berjamaah di Masjid" class="w-full p-2.5 border rounded-xl" />
-                </div>
-                <div>
-                  <label class="font-bold block mb-1">Deskripsi Kegiatan *</label>
-                  <textarea id="jr-desc" rows="3" required placeholder="Ceritakan detail kegiatan positif anak..." class="w-full p-2.5 border rounded-xl"></textarea>
-                </div>
-
-                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                   <div>
-                    <label class="font-black text-slate-800 block">Lampiran Bukti Kegiatan (Opsional)</label>
-                    <span class="text-[11px] text-slate-500">Unggah foto (JPG, PNG, WEBP) atau dokumen PDF sebagai bukti kegiatan siswa. Maksimal ukuran 5 MB.</span>
+                    <label class="font-bold block mb-1 text-slate-700">Judul Kegiatan *</label>
+                    <input type="text" id="jr-title" required placeholder="Contoh: Salat Subuh Berjamaah di Masjid" class="w-full p-2.5 border rounded-xl text-slate-900" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-700">Deskripsi Kegiatan *</label>
+                    <textarea id="jr-desc" rows="3" required placeholder="Ceritakan detail kegiatan positif anak..." class="w-full p-2.5 border rounded-xl text-slate-900"></textarea>
                   </div>
 
-                  <div class="flex flex-wrap items-center gap-2">
-                    <label class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-2xs inline-flex items-center gap-1.5">
-                      📁 Pilih File / Ambil Foto
-                      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" onchange="window.handleJournalFileSelected(event)" class="hidden" />
-                    </label>
-                    <span id="journal-file-name-label" class="text-slate-500 italic text-[11px]">Belum ada file dipilih</span>
+                  <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div>
+                      <label class="font-black text-slate-800 block">Lampiran Bukti Kegiatan (Opsional)</label>
+                      <span class="text-[11px] text-slate-500">Unggah foto (JPG, PNG, WEBP) atau PDF (Maks. 5 MB).</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-2xs inline-flex items-center gap-1.5">
+                        📁 Pilih File / Ambil Foto
+                        <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" onchange="window.handleJournalFileSelected(event)" class="hidden" />
+                      </label>
+                      <span id="journal-file-name-label" class="text-slate-500 italic text-[11px] truncate max-w-[180px]">Belum ada file dipilih</span>
+                    </div>
+
+                    <!-- AREA PRATINJAU DENGAN TINGGI MAKSIMAL YANG TERKONTROL -->
+                    <div id="journal-attachment-preview" class="hidden pt-1"></div>
                   </div>
+                </form>
+              </div>
 
-                  <div id="journal-attachment-preview" class="hidden pt-2"></div>
-                </div>
+              <!-- 3. FOOTER MODAL (STICKY / FIXED FLEX-SHRINK 0 — SELALU TERLIHAT DI ATAS BOTTOM NAVIGATION) -->
+              <div class="px-5 py-3.5 border-t border-slate-200 bg-white shrink-0 flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('modal-add-journal').classList.add('hidden')" class="px-4 py-2.5 border rounded-xl font-bold cursor-pointer bg-slate-100 hover:bg-slate-200 text-xs text-slate-700">Batal</button>
+                <button type="submit" form="form-add-journal" id="btn-save-journal" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold cursor-pointer shadow-md text-xs">Simpan Jurnal & Lampiran</button>
+              </div>
 
-                <div class="flex justify-end gap-2 pt-4 border-t sticky bottom-0 bg-white pb-2">
-                  <button type="button" onclick="document.getElementById('modal-add-journal').classList.add('hidden')" class="px-4 py-2.5 border rounded-xl font-bold cursor-pointer bg-slate-100 hover:bg-slate-200">Batal</button>
-                  <button type="submit" id="btn-save-journal" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold cursor-pointer shadow-md">Simpan Jurnal & Lampiran</button>
-                </div>
-              </form>
             </div>
           </div>
         </div>
@@ -2505,23 +2514,24 @@
           const isPdf = file.type === 'application/pdf';
           if (isPdf) {
             prevBox.innerHTML = `
-              <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs">
+              <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
                 <div class="flex items-center gap-2 overflow-hidden">
-                  <span class="text-xl">📄</span>
+                  <span class="text-lg">📄</span>
                   <div class="overflow-hidden">
-                    <div class="font-bold text-slate-800 truncate">${file.name}</div>
-                    <div class="text-[10px] text-slate-400 font-mono">${(file.size / 1024).toFixed(1)} KB (PDF)</div>
+                    <div class="font-bold text-slate-800 truncate text-[11px]">${file.name}</div>
+                    <div class="text-[9px] text-slate-400 font-mono">${(file.size / 1024).toFixed(1)} KB (PDF)</div>
                   </div>
                 </div>
-                <button type="button" onclick="window.removeTempJournalAttachment()" class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold text-[11px] cursor-pointer">Hapus</button>
+                <button type="button" onclick="window.removeTempJournalAttachment()" class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold text-[10px] cursor-pointer">Hapus</button>
               </div>
             `;
           } else {
+            // PRATINJAU GAMBAR DENGAN MAX-HEIGHT 120px AGAR TIDAK MENDORONG TOMBOL SIMPAN KELUAR LAYAR
             prevBox.innerHTML = `
-              <div class="space-y-2">
+              <div class="space-y-1">
                 <span class="text-[10px] font-bold text-slate-500 block">Pratinjau Bukti:</span>
-                <div class="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-slate-100 flex items-center justify-center">
-                  <img src="${state.tempAttachment.previewUrl}" alt="Pratinjau" class="w-full h-full object-cover" />
+                <div class="relative inline-block rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-slate-900 max-h-32">
+                  <img src="${state.tempAttachment.previewUrl}" alt="Pratinjau" class="max-h-28 w-auto object-contain mx-auto block" />
                   <button type="button" onclick="window.removeTempJournalAttachment()" class="absolute top-1 right-1 px-2 py-0.5 bg-rose-600 text-white rounded-md font-bold text-[10px] shadow cursor-pointer">X</button>
                 </div>
               </div>
