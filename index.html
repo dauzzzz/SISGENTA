@@ -1,0 +1,2841 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Administrasi & Presensi - SDN Gedongboyountung</title>
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22SDN%20Gedongboyountung%20App%22%2C%22short_name%22%3A%22SDN%20Gedong%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%232563eb%22%7D" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    #app-wrapper {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f8fafc;
+      z-index: 99999;
+    }
+    @media (min-width: 768px) {
+      .desktop-sidebar { display: flex !important; }
+      .mobile-bottom-nav { display: none !important; }
+      .main-content-area { margin-left: 16rem; padding-bottom: 2rem; }
+    }
+    @media (max-width: 767px) {
+      .desktop-sidebar { display: none !important; }
+      .mobile-bottom-nav { display: flex !important; }
+      .main-content-area { margin-left: 0; padding-bottom: 5.5rem; }
+    }
+
+    /* CSS CETAK A4 PORTRAIT REKAPITULASI PRESENSI */
+    @media print {
+      body, html {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      #app-wrapper {
+        position: static !important;
+        overflow: visible !important;
+        height: auto !important;
+        background: #ffffff !important;
+      }
+      .desktop-sidebar, .mobile-bottom-nav, .no-print {
+        display: none !important;
+      }
+      .main-content-area {
+        margin-left: 0 !important;
+        padding: 0 !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+      .recap-print-container {
+        width: 190mm !important;
+        margin: 0 auto !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+      }
+      .recap-table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        font-size: 8pt !important;
+      }
+      .recap-table th {
+        font-size: 9pt !important;
+        background-color: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border: 1px solid #475569 !important;
+        padding: 5px 6px !important;
+      }
+      .recap-table td {
+        border: 1px solid #475569 !important;
+        padding: 4px 6px !important;
+        vertical-align: middle !important;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+      }
+      .recap-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      thead { display: table-header-group !important; }
+      .recap-signature-section {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-top: 20px !important;
+      }
+
+      /* CSS CETAK KARTU PELAJAR A4 PORTRAIT 2x4 (8 KARTU/HALAMAN) */
+      .cards-print-sheet {
+        width: 192mm !important;
+        height: 279mm !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 85.6mm) !important;
+        grid-template-rows: repeat(4, 54mm) !important;
+        column-gap: 4mm !important;
+        row-gap: 3.5mm !important;
+        justify-content: center !important;
+        align-content: start !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        box-sizing: border-box !important;
+        margin: 0 auto !important;
+      }
+      .student-id-card {
+        width: 85.6mm !important;
+        height: 54mm !important;
+        border: 1.5px solid #1e293b !important;
+        border-radius: 4mm !important;
+        padding: 3.5mm !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+  </style>
+</head>
+<body>
+  <div id="app-wrapper">
+    <div id="toast-container" class="fixed top-4 right-4 z-[100000] hidden no-print">
+      <div id="toast-box" class="px-4 py-3 rounded-2xl shadow-xl text-xs font-bold text-white bg-slate-900 border border-slate-700 flex items-center gap-2">
+        <span id="toast-text"></span>
+      </div>
+    </div>
+    <div id="root-view"></div>
+  </div>
+
+  <script type="module">
+    // Konfigurasi URL Google Apps Script Web App untuk unggah file ke Google Drive
+    const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwukd1IjMhjaO4cI_nlKHkSq8ym391sg62hZTvFkcwOn9EhLu0Ly78QOO160v58SeBJSA/exec";
+    const IS_PREVIEW = false;
+
+    const firebaseConfig = {
+  apiKey: "AIzaSyBh3rDToKKyTAFLh02RU3R4sQE96R-IngU",
+  authDomain: "sisgenta.firebaseapp.com",
+  projectId: "sisgenta",
+  storageBucket: "sisgenta.firebasestorage.app",
+  messagingSenderId: "79640623264",
+  appId: "1:79640623264:web:a9a392dcd047df7d0171c5"
+    };
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDocs, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+        self.addEventListener('fetch', e => {});
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+
+    let app = null;
+    let auth = null;
+    let db = null;
+    if (!IS_PREVIEW) {
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+      } catch (e) {
+        console.error("Gagal inisialisasi Firebase:", e);
+      }
+    }
+
+    const ACTIVITY_CATEGORIES = [
+      'Bangun Pagi', 'Beribadah', 'Berolahraga', 'Makan Sehat dan Bergizi',
+      'Gemar Belajar', 'Bermasyarakat', 'Tidur Cepat'
+    ];
+
+    const ALL_CLASS_NAMES = ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6'];
+
+    let state = {
+      currentUser: null,
+      activeTab: 'dashboard',
+      todayStr: new Date().toISOString().split('T')[0],
+      schoolInfo: IS_PREVIEW ? {
+        name: 'SDN Gedongboyountung',
+        npsn: '20506021',
+        address: 'Desa Gedongboyountung, Kec. Turi, Kab. Lamongan, Jawa Timur',
+        principal: 'EDI SUCIPTO, S.Pd',
+        principalNip: '196807151993031008',
+        academicYear: '2026/2027',
+        semester: 'Ganjil',
+        logo: ''
+      } : {
+        name: 'SDN Gedongboyountung',
+        npsn: '', address: '', principal: '', principalNip: '', academicYear: '2026/2027', semester: 'Ganjil', logo: ''
+      },
+      classesList: IS_PREVIEW ? [
+        { id: 'Kelas 1', name: 'Kelas 1', level: '1', teacher: 'Siti Zulaikah' },
+        { id: 'Kelas 4', name: 'Kelas 4', level: '4', teacher: 'SELLA AYU LUTFIANDI' }
+      ] : [],
+      teachers: IS_PREVIEW ? [
+        { id: 'T001', name: 'SELLA AYU LUTFIANDI', nip: '0545772673230302', nuptk: '054577267323030', role: 'Guru Kelas', classAssignment: 'Kelas 4', phone: '081234567888', email: 'sheilakmal26@gmail.com', password: '123456' },
+        { id: 'T002', name: 'Siti Zulaikah', nip: '19910607202321201', nuptk: '993976967013014', role: 'Guru Kelas', classAssignment: 'Kelas 1', phone: '081234567888', email: 'sitizulaikah43@yahoo.com', password: '123456' }
+      ] : [],
+      students: IS_PREVIEW ? [
+        { id: 'S101', name: 'MUHAMMAD RIZKI ADITYA', nisn: '3195240210', nis: '20506021', classId: 'Kelas 1', gender: 'Laki-laki', parentName: 'SUHARTINI', address: 'Desa/Kel. Dlanggu', password: '123456' },
+        { id: 'S401', name: 'SAFFANA ALYA', nisn: '3163901588', nis: '20506021', classId: 'Kelas 4', gender: 'Perempuan', parentName: 'ARIF FATMAWATI', address: 'Gedongboyountung', password: '123456' }
+      ] : [],
+      attendanceRecords: IS_PREVIEW ? [
+        { id: 'att_demo_1', studentId: 'S101', studentName: 'MUHAMMAD RIZKI ADITYA', nisn: '3195240210', classId: 'Kelas 1', date: new Date().toISOString().split('T')[0], status: 'Hadir', time: '06:45', method: 'QR Scan' }
+      ] : [],
+      journals: IS_PREVIEW ? [
+        {
+          id: 'JRN_1',
+          studentId: 'S101',
+          studentName: 'MUHAMMAD RIZKI ADITYA',
+          classId: 'Kelas 1',
+          category: 'Bangun Pagi',
+          title: 'Bangun Pukul 05.00 WIB',
+          description: 'Merapikan tempat tidur dan persiapan salat Subuh.',
+          date: new Date().toISOString().split('T')[0],
+          recordedBy: 'MUHAMMAD RIZKI ADITYA',
+          attachmentUrl: '', attachmentPath: '', attachmentName: '', attachmentType: '', attachmentSize: 0
+        }
+      ] : [],
+      filterStudentSearch: '',
+      filterStudentClass: 'Semua',
+      studentImportPreview: [],
+      filterTeacherSearch: '',
+      teacherImportPreview: [],
+      filterAttClass: 'Semua',
+      filterRecapClass: 'Semua',
+      filterRecapPeriod: 'Per Bulan',
+      filterRecapMonthYear: '2026-10',
+      filterCardClass: 'Semua',
+      filterCardSearch: '',
+      filterCredRole: 'Semua',
+      filterCredClass: 'Semua',
+      filterCredSearch: '',
+      filterJournalClass: 'Semua',
+      pendingDeleteJournalId: null,
+      deletedJournalIds: new Set(),
+      isCameraScanning: false,
+      cameraDevices: [],
+      selectedCameraId: '',
+      tempAttachment: null
+    };
+
+    let html5QrScanner = null;
+    let fallbackVideoStream = null;
+    let fallbackScanTimer = null;
+
+    // FUNGSI CETAK UNIVERSAL DENGAN FORMAT A4 PORTRAIT DAN PENGATURAN HALAMAN
+    window.triggerUniversalPrint = (titleDoc = 'Cetak Dokumen - SDN Gedongboyountung') => {
+      const printArea = document.getElementById('printable-area') || document.querySelector('main');
+      if (!printArea) { window.print(); return; }
+      const printWin = window.open('', '_blank', 'width=800,height=1100');
+      if (!printWin) { window.print(); return; }
+      const cloned = printArea.cloneNode(true);
+      cloned.querySelectorAll('.no-print').forEach(el => el.remove());
+
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>${titleDoc}</title>
+          <script src="https://cdn.tailwindcss.com"><\/script>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+          <style>
+            body { font-family: 'Inter', sans-serif; background: #ffffff; color: #0f172a; padding: 12px; margin: 0; }
+            .no-print { display: none !important; }
+            .recap-print-container {
+              width: 190mm !important;
+              margin: 0 auto !important;
+              background: #ffffff !important;
+              box-sizing: border-box !important;
+            }
+            .recap-table {
+              width: 100% !important;
+              table-layout: fixed !important;
+              border-collapse: collapse !important;
+              font-size: 8pt !important;
+            }
+            .recap-table th {
+              font-size: 9pt !important;
+              background-color: #f1f5f9 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              border: 1px solid #475569 !important;
+              padding: 5px 6px !important;
+            }
+            .recap-table td {
+              border: 1px solid #475569 !important;
+              padding: 4px 6px !important;
+              vertical-align: middle !important;
+              overflow-wrap: break-word;
+              word-wrap: break-word;
+            }
+            .recap-table tr {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
+            thead { display: table-header-group !important; }
+            .recap-signature-section {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+              margin-top: 20px !important;
+            }
+            @media print {
+              body { padding: 0; }
+              @page { size: A4 portrait; margin: 10mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between no-print">
+            <span class="text-xs font-bold text-blue-900">Siap mencetak Rekap A4 Portrait. Klik tombol di kanan jika dialog belum terbuka otomatis:</span>
+            <div class="flex gap-2">
+              <button onclick="window.print()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer">🖨️ Cetak Sekarang</button>
+              <button onclick="window.close()" class="px-3 py-1.5 bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer">Tutup</button>
+            </div>
+          </div>
+          ${cloned.innerHTML}
+          <script>
+            window.onload = function() {
+              setTimeout(function() { window.focus(); window.print(); }, 600);
+            };
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    };
+
+    function renderSchoolLogoHtml(sizeClass = "w-10 h-10", textClass = "text-xs") {
+      if (state.schoolInfo.logo) {
+        return `<img src="${state.schoolInfo.logo}" alt="Logo Sekolah" class="${sizeClass} rounded-full object-contain bg-white p-0.5 border border-slate-200 shadow-xs mx-auto" />`;
+      }
+      return `<div class="${sizeClass} rounded-full bg-blue-600 text-white flex items-center justify-center font-black ${textClass} shadow-md border border-blue-400 select-none mx-auto">SDN</div>`;
+    }
+
+    function parseSpreadsheetText(rawText) {
+      const rows = [];
+      if (!rawText) return rows;
+      const text = String(rawText).trim();
+      if (text.includes('<tr') || text.includes('<TR') || text.includes('<Row')) {
+        const parser = new DOMParser();
+        const docDom = parser.parseFromString(text, 'text/html');
+        docDom.querySelectorAll('tr, row').forEach(tr => {
+          const cells = tr.querySelectorAll('td, th, cell, data');
+          if (cells.length > 0) {
+            const vals = Array.from(cells).map(c => (c.textContent || '').trim());
+            if (vals.some(v => v !== '')) rows.push(vals);
+          }
+        });
+        if (rows.length > 0) return rows;
+      }
+      text.split(/\r?\n/).filter(l => l.trim() !== '').forEach(line => {
+        let cols = [];
+        if (line.includes('\t')) cols = line.split('\t');
+        else if (line.includes(';')) cols = line.split(';');
+        else cols = line.split(',');
+        const clean = cols.map(c => c.replace(/^["']|["']$/g, '').trim());
+        if (clean.some(v => v !== '')) rows.push(clean);
+      });
+      return rows;
+    }
+
+    window.showToast = (msg, type = 'success') => {
+      const container = document.getElementById('toast-container');
+      const box = document.getElementById('toast-box');
+      const text = document.getElementById('toast-text');
+      text.textContent = msg;
+      box.className = `px-4 py-3 rounded-2xl shadow-xl text-xs font-bold text-white flex items-center gap-2 ${
+        type === 'error' ? 'bg-rose-600 border border-rose-500' : 'bg-slate-900 border border-slate-700'
+      }`;
+      container.classList.remove('hidden');
+      setTimeout(() => container.classList.add('hidden'), 3200);
+    };
+
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.14, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch {}
+    }
+
+    function createQRSVG(text, size = 92) {
+      const str = String(text || 'SDN-000').trim();
+      // Gunakan library qrcode-generator standar ISO/IEC 18004 (dengan Reed-Solomon ECC) agar 100% terbaca semua scanner
+      if (typeof qrcode !== 'undefined') {
+        try {
+          const qr = qrcode(0, 'M');
+          qr.addData(str);
+          qr.make();
+          const moduleCount = qr.getModuleCount();
+          const cell = size / (moduleCount + 4);
+          let rects = '';
+          for (let r = 0; r < moduleCount; r++) {
+            for (let c = 0; c < moduleCount; c++) {
+              if (qr.isDark(r, c)) {
+                rects += `<rect x="${(c + 2) * cell}" y="${(r + 2) * cell}" width="${cell * 1.03}" height="${cell * 1.03}" fill="#0f172a" shape-rendering="crispEdges"/>`;
+              }
+            }
+          }
+          return `<div class="flex flex-col items-center"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="bg-white rounded-xl border border-slate-200 p-1 shadow-xs mx-auto"><rect width="${size}" height="${size}" fill="#fff" rx="6"/>${rects}</svg><span class="font-mono text-[9px] font-bold text-slate-600 mt-1">${str}</span></div>`;
+        } catch (err) {
+          console.warn('Fallback QR generator error:', err);
+        }
+      }
+
+      // Fallback Reed-Solomon Version 1-L / 2-L
+      const len = str.length;
+      let version = len > 14 ? 2 : 1;
+      const N = 17 + 4 * version;
+      const cell = size / (N + 4);
+      const encoded = encodeURIComponent(str);
+      return `<div class="flex flex-col items-center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&ecc=M&margin=2&data=${encoded}" width="${size}" height="${size}" alt="${str}" class="bg-white rounded-xl border border-slate-200 p-1 shadow-xs mx-auto" /><span class="font-mono text-[9px] font-bold text-slate-600 mt-1">${str}</span></div>`;
+    }
+
+    let unsubList = [];
+    function startFirestoreSync() {
+      if (IS_PREVIEW || !db) return;
+      unsubList.forEach(u => u());
+      unsubList = [];
+
+      unsubList.push(onSnapshot(doc(db, 'settings', 'school_info'), snap => {
+        if (snap.exists()) { state.schoolInfo = snap.data(); renderApp(); }
+      }));
+      unsubList.push(onSnapshot(collection(db, 'classes'), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        state.classesList = list.sort((a, b) => a.name.localeCompare(b.name));
+        renderApp();
+      }));
+      unsubList.push(onSnapshot(collection(db, 'teachers'), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        state.teachers = list; renderApp();
+      }));
+      unsubList.push(onSnapshot(collection(db, 'students'), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        state.students = list; renderApp();
+      }));
+      unsubList.push(onSnapshot(collection(db, 'attendance'), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        state.attendanceRecords = list; renderApp();
+      }));
+      unsubList.push(onSnapshot(collection(db, 'journals'), snap => {
+        const list = [];
+        snap.forEach(d => {
+          const docData = d.data();
+          const realDocId = d.id;
+          if (!state.deletedJournalIds.has(realDocId) && !state.deletedJournalIds.has(docData?.id)) {
+            list.push({ ...docData, id: realDocId, firestoreDocId: realDocId });
+          }
+        });
+        state.journals = list;
+        renderApp();
+      }));
+    }
+
+    function getMenus() {
+      if (!state.currentUser) return [];
+      const role = state.currentUser.role;
+      if (role === 'Siswa') {
+        return [
+          { id: 'dashboard', label: 'Beranda', icon: '🏠' },
+          { id: 'journal', label: 'Jurnal Karakter', icon: '📖' },
+          { id: 'my_card', label: 'Kartu QR', icon: '🪪' }
+        ];
+      }
+      if (role === 'Guru') {
+        return [
+          { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+          { id: 'students', label: 'Data Murid', icon: '👥' },
+          { id: 'classes', label: 'Rombel', icon: '🏫' },
+          { id: 'attendance', label: 'Presensi', icon: '📅' },
+          { id: 'recap', label: 'Rekap', icon: '📊' },
+          { id: 'journal', label: 'Jurnal', icon: '📖' }
+        ];
+      }
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+        { id: 'students', label: 'Data Murid', icon: '👥' },
+        { id: 'teachers', label: 'Data Guru', icon: '🎓' },
+        { id: 'classes', label: 'Rombel', icon: '🏫' },
+        { id: 'attendance', label: 'Presensi', icon: '📅' },
+        { id: 'recap', label: 'Rekap', icon: '📊' },
+        { id: 'cards', label: 'Kartu QR & Scan', icon: '🪪' },
+        { id: 'journal', label: 'Jurnal', icon: '📖' },
+        { id: 'credentials', label: 'Akun Login', icon: '🔑' },
+        { id: 'school_identity', label: 'Identitas', icon: '⚙️' }
+      ];
+    }
+
+    window.stopCameraScanner = async () => {
+      if (fallbackScanTimer) { clearInterval(fallbackScanTimer); fallbackScanTimer = null; }
+      if (fallbackVideoStream) { fallbackVideoStream.getTracks().forEach(t => t.stop()); fallbackVideoStream = null; }
+      if (html5QrScanner) {
+        try {
+          if (html5QrScanner.isScanning) await html5QrScanner.stop();
+          await html5QrScanner.clear();
+        } catch {}
+        html5QrScanner = null;
+      }
+      state.isCameraScanning = false;
+      const modal = document.getElementById('modal-camera-scanner');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    window.switchTab = async (tabId) => {
+      if (state.isCameraScanning) await window.stopCameraScanner();
+      state.activeTab = tabId;
+      renderApp();
+    };
+
+    window.handleLogout = async () => {
+      if (state.isCameraScanning) await window.stopCameraScanner();
+      if (!IS_PREVIEW && auth && state.currentUser?.role === 'Admin') {
+        try { await signOut(auth); } catch {}
+      }
+      state.currentUser = null;
+      state.activeTab = 'dashboard';
+      showToast('Berhasil keluar dari aplikasi');
+      renderApp();
+    };
+
+    function renderLogin() {
+      const previewBadge = IS_PREVIEW ? `
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-900 space-y-1">
+          <div class="font-black uppercase tracking-wider text-[10px] text-amber-700">⚡ Mode Preview Aktif (In-Memory)</div>
+          <div>• <b>Admin:</b> <code>admin@sdngedong.sch.id</code> / 123456</div>
+          <div>• <b>Guru Wali:</b> NIP <code>0545772673230302</code> / 123456</div>
+          <div>• <b>Siswa:</b> NISN <code>3195240210</code> / 123456</div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div class="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
+            <div class="text-center space-y-2">
+              ${renderSchoolLogoHtml("w-16 h-16", "text-lg")}
+              <h1 class="text-2xl font-black text-slate-900 tracking-tight">${state.schoolInfo.name || 'SDN Gedongboyountung'}</h1>
+              <p class="text-xs text-slate-500 font-medium">Sistem Terpadu Administrasi, Presensi & Karakter Siswa</p>
+            </div>
+
+            ${previewBadge}
+
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
+              <button type="button" onclick="window.setLoginRole('Admin')" id="tab-role-Admin" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-xs cursor-pointer">Admin</button>
+              <button type="button" onclick="window.setLoginRole('Guru')" id="tab-role-Guru" class="flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 cursor-pointer">Guru</button>
+              <button type="button" onclick="window.setLoginRole('Siswa')" id="tab-role-Siswa" class="flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 cursor-pointer">Siswa</button>
+            </div>
+
+            <form id="login-form" class="space-y-4">
+              <input type="hidden" id="login-role" value="Admin" />
+              <div>
+                <label id="label-username" class="text-xs font-bold text-slate-700 block mb-1.5">Email / Username Admin</label>
+                <input type="text" id="login-username" required value="${IS_PREVIEW ? 'admin@sdngedong.sch.id' : ''}" placeholder="Masukkan Email Admin" class="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-700 block mb-1.5">Kata Sandi</label>
+                <input type="password" id="login-password" required value="${IS_PREVIEW ? '123456' : ''}" placeholder="Masukkan Kata Sandi" class="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer">
+                Masuk ke Aplikasi
+              </button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    window.setLoginRole = (role) => {
+      document.getElementById('login-role').value = role;
+      ['Admin', 'Guru', 'Siswa'].forEach(r => {
+        const btn = document.getElementById(`tab-role-${r}`);
+        if (btn) {
+          btn.className = r === role
+            ? 'flex-1 py-2.5 text-xs font-bold rounded-xl bg-blue-600 text-white shadow-xs cursor-pointer'
+            : 'flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 cursor-pointer';
+        }
+      });
+      const lbl = document.getElementById('label-username');
+      const inp = document.getElementById('login-username');
+      if (role === 'Admin') {
+        lbl.textContent = 'Email / Username Admin';
+        inp.value = IS_PREVIEW ? 'admin@sdngedong.sch.id' : '';
+        inp.placeholder = 'Masukkan Email Admin (Firebase Auth)';
+      } else if (role === 'Guru') {
+        lbl.textContent = 'NIP Guru (Koleksi Firestore)';
+        inp.value = IS_PREVIEW ? '0545772673230302' : '';
+        inp.placeholder = 'Masukkan NIP Guru';
+      } else {
+        lbl.textContent = 'NISN Siswa (Koleksi Firestore)';
+        inp.value = IS_PREVIEW ? '3195240210' : '';
+        inp.placeholder = 'Masukkan NISN Siswa';
+      }
+    };
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const role = document.getElementById('login-role').value;
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+
+      if (IS_PREVIEW) {
+        if (role === 'Admin') {
+          state.currentUser = { id: 'ADMIN-1', name: state.schoolInfo.principal || 'Administrator', role: 'Admin', username };
+          showToast(`Selamat datang Admin (${state.currentUser.name})`);
+        } else if (role === 'Guru') {
+          const found = state.teachers.find(t => t.nip === username && (t.password || '123456') === password);
+          if (!found) return showToast('NIP atau Kata Sandi Guru tidak valid!', 'error');
+          state.currentUser = { id: found.id, name: found.name, role: 'Guru', username: found.nip, classAssignment: found.classAssignment };
+          state.filterAttClass = found.classAssignment && found.classAssignment !== 'Semua Kelas' ? found.classAssignment : 'Semua';
+          state.filterRecapClass = state.filterAttClass;
+          showToast(`Selamat datang, ${found.name} (${found.classAssignment})`);
+        } else {
+          const found = state.students.find(s => s.nisn === username && (s.password || '123456') === password);
+          if (!found) return showToast('NISN atau Kata Sandi Siswa tidak valid!', 'error');
+          state.currentUser = { id: found.id, name: found.name, role: 'Siswa', username: found.nisn, classId: found.classId };
+          showToast(`Selamat datang, ${found.name}!`);
+        }
+        state.activeTab = 'dashboard';
+        renderApp();
+        return;
+      }
+
+      try {
+        if (role === 'Admin') {
+          const cred = await signInWithEmailAndPassword(auth, username, password);
+          startFirestoreSync();
+          state.currentUser = { id: cred.user.uid, name: state.schoolInfo.principal || cred.user.email, role: 'Admin', username: cred.user.email };
+          showToast('Login Admin berhasil!');
+        } else if (role === 'Guru') {
+          const snap = await getDocs(collection(db, 'teachers'));
+          let matched = null;
+          snap.forEach(d => {
+            const data = d.data();
+            if (data.nip === username && (data.password || '123456') === password) matched = { id: d.id, ...data };
+          });
+          if (!matched) return showToast('Akun Guru tidak ditemukan atau password salah!', 'error');
+          startFirestoreSync();
+          state.currentUser = { id: matched.id, name: matched.name, role: 'Guru', username: matched.nip, classAssignment: matched.classAssignment };
+          state.filterAttClass = matched.classAssignment && matched.classAssignment !== 'Semua Kelas' ? matched.classAssignment : 'Semua';
+          state.filterRecapClass = state.filterAttClass;
+          showToast(`Selamat datang, ${matched.name}!`);
+        } else {
+          const snap = await getDocs(collection(db, 'students'));
+          let matched = null;
+          snap.forEach(d => {
+            const data = d.data();
+            if (data.nisn === username && (data.password || '123456') === password) matched = { id: d.id, ...data };
+          });
+          if (!matched) return showToast('Akun Siswa tidak ditemukan atau password salah!', 'error');
+          startFirestoreSync();
+          state.currentUser = { id: matched.id, name: matched.name, role: 'Siswa', username: matched.nisn, classId: matched.classId };
+          showToast(`Selamat datang, ${matched.name}!`);
+        }
+        state.activeTab = 'dashboard';
+        renderApp();
+      } catch (err) {
+        showToast('Gagal masuk: Periksa kembali akun/koneksi Firebase Anda.', 'error');
+      }
+    }
+
+    function renderDashboardView() {
+      const isGuru = state.currentUser.role === 'Guru';
+      const assigned = state.currentUser.classAssignment;
+      const relStudents = isGuru && assigned && assigned !== 'Semua Kelas' ? state.students.filter(s => s.classId === assigned) : state.students;
+      const relIds = new Set(relStudents.map(s => s.id));
+      const todayAtt = state.attendanceRecords.filter(r => r.date === state.todayStr && relIds.has(r.studentId));
+      const countStatus = (st) => todayAtt.filter(r => r.status === st).length;
+
+      const rombelCards = state.classesList.length === 0
+        ? `<div class="col-span-full text-center py-6 text-xs text-slate-400 font-bold">Belum ada data rombel kelas. Silakan atur di menu Rombel.</div>`
+        : state.classesList.map(c => {
+            const cnt = state.students.filter(s => s.classId === c.id).length;
+            return `
+              <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div>
+                  <div class="font-black text-slate-800 text-sm">${c.name}</div>
+                  <div class="text-[11px] text-slate-500">Wali: ${c.teacher || '-'}</div>
+                </div>
+                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-black">${cnt} Siswa</span>
+              </div>
+            `;
+          }).join('');
+
+      return `
+        <div class="space-y-6">
+          <div class="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-3xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="space-y-2 text-center md:text-left">
+              <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase">Tahun Ajaran ${state.schoolInfo.academicYear || '-'} • Semester ${state.schoolInfo.semester || '-'}</span>
+              <h2 class="text-2xl font-black">${state.schoolInfo.name || 'SDN Gedongboyountung'}</h2>
+              <p class="text-xs text-blue-100">${isGuru ? `Wali Kelas: ${state.currentUser.name} (${assigned})` : (state.schoolInfo.address || 'Kab. Lamongan')}</p>
+            </div>
+            <div class="bg-white/10 rounded-2xl p-4 border border-white/20 text-center min-w-[150px]">
+              <div class="text-3xl font-black">${relStudents.length}</div>
+              <div class="text-xs font-bold text-blue-200">Total Murid</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div class="bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs"><span class="text-xs font-bold text-emerald-600 block">Hadir</span><span class="text-2xl font-black text-emerald-700">${countStatus('Hadir')}</span></div>
+            <div class="bg-white p-4 rounded-2xl border border-amber-100 shadow-xs"><span class="text-xs font-bold text-amber-600 block">Terlambat</span><span class="text-2xl font-black text-amber-700">${countStatus('Terlambat')}</span></div>
+            <div class="bg-white p-4 rounded-2xl border border-blue-100 shadow-xs"><span class="text-xs font-bold text-blue-600 block">Sakit</span><span class="text-2xl font-black text-blue-700">${countStatus('Sakit')}</span></div>
+            <div class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-xs"><span class="text-xs font-bold text-indigo-600 block">Izin</span><span class="text-2xl font-black text-indigo-700">${countStatus('Izin')}</span></div>
+            <div class="bg-white p-4 rounded-2xl border border-rose-100 shadow-xs"><span class="text-xs font-bold text-rose-600 block">Alpa</span><span class="text-2xl font-black text-rose-700">${countStatus('Alpa')}</span></div>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+            <h3 class="font-black text-slate-800 text-sm">Ringkasan Rombongan Belajar</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${rombelCards}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStudentsView() {
+      const filtered = state.students.filter(s => {
+        const mSearch = s.name.toLowerCase().includes(state.filterStudentSearch.toLowerCase()) || s.nisn.includes(state.filterStudentSearch);
+        const mClass = state.filterStudentClass === 'Semua' || s.classId === state.filterStudentClass;
+        return mSearch && mClass;
+      });
+
+      const rowsHtml = filtered.length === 0
+        ? `<tr><td colspan="8" class="p-6 text-center text-slate-400 font-bold">Belum ada data murid.</td></tr>`
+        : filtered.map((s, idx) => `
+          <tr class="hover:bg-slate-50 border-b border-slate-100">
+            <td class="p-3">${idx + 1}</td>
+            <td class="p-3 font-bold text-slate-900">${s.name}</td>
+            <td class="p-3 font-mono font-bold text-blue-700">${s.nisn}</td>
+            <td class="p-3 font-bold">${s.classId}</td>
+            <td class="p-3">${s.gender}</td>
+            <td class="p-3">${s.parentName || '-'}</td>
+            <td class="p-3">${s.address || '-'}</td>
+            <td class="p-3 text-center">
+              <div class="flex items-center justify-center gap-1">
+                <button onclick="window.openEditStudentModal('${s.id}')" class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg font-bold text-[11px] cursor-pointer">Edit</button>
+                <button onclick="window.deleteStudent('${s.id}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold text-[11px] cursor-pointer">Hapus</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <input type="text" placeholder="Cari nama / NISN..." value="${state.filterStudentSearch}" oninput="window.updateStudentSearch(this.value)" class="p-2 border rounded-xl text-xs w-48" />
+              <select onchange="window.updateStudentClassFilter(this.value)" class="p-2 border rounded-xl text-xs font-bold">
+                <option value="Semua">Semua Kelas (${state.students.length})</option>
+                ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${state.filterStudentClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="window.downloadStudentTemplate()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs cursor-pointer">📄 Unduh Template Siswa</button>
+              <button onclick="window.openImportStudentModal()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs">📥 Impor Template Siswa</button>
+              <button onclick="window.exportStudentsExcel()" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-xl text-xs cursor-pointer">📊 Ekspor Data</button>
+              <button onclick="window.openAddStudentModal()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs">+ Tambah Murid</button>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-100 text-slate-700 font-bold">
+                <tr><th class="p-3">No</th><th class="p-3">Nama Lengkap</th><th class="p-3">NISN</th><th class="p-3">Kelas</th><th class="p-3">L/P</th><th class="p-3">Nama Wali</th><th class="p-3">Alamat</th><th class="p-3 text-center">Aksi</th></tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+
+          <div id="modal-add-student" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-md w-full rounded-3xl p-6 space-y-4">
+              <h3 id="modal-student-title" class="font-black text-base">Tambah Data Murid</h3>
+              <form onsubmit="window.saveStudent(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="st-edit-id" value="" />
+                <div>
+                  <label class="font-bold block mb-1">Nama Lengkap Murid *</label>
+                  <input type="text" id="st-name" required placeholder="Contoh: AHMAD FAUZI" class="w-full p-2.5 border rounded-xl" />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="font-bold block mb-1">NISN *</label>
+                    <input type="text" id="st-nisn" required placeholder="10 Digit NISN" class="w-full p-2.5 border rounded-xl font-mono" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1">Kelas (Rombel)</label>
+                    <select id="st-class" class="w-full p-2.5 border rounded-xl font-bold">
+                      ${ALL_CLASS_NAMES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="font-bold block mb-1">Jenis Kelamin</label>
+                    <select id="st-gender" class="w-full p-2.5 border rounded-xl font-bold">
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1">Nama Orang Tua / Wali</label>
+                    <input type="text" id="st-parent" placeholder="Nama Ibu / Wali" class="w-full p-2.5 border rounded-xl" />
+                  </div>
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Alamat Rumah</label>
+                  <input type="text" id="st-address" placeholder="Desa / Dusun" class="w-full p-2.5 border rounded-xl" />
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                  <button type="button" onclick="document.getElementById('modal-add-student').classList.add('hidden')" class="px-4 py-2 border rounded-xl font-bold cursor-pointer">Batal</button>
+                  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold cursor-pointer">Simpan</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="modal-import-student" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-xl w-full rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between items-center">
+                <h3 class="font-black text-base text-slate-900">Impor Massal Data Murid (Template Excel/CSV)</h3>
+                <button onclick="window.downloadStudentTemplate()" class="text-xs font-bold text-blue-600 underline cursor-pointer">Unduh Template Contoh</button>
+              </div>
+              <p class="text-xs text-slate-500">Pilih file hasil edit template (<b>.csv / .xls / .txt</b>) atau <b>Copy-Paste</b> langsung baris dari Microsoft Excel di bawah ini:</p>
+              <div class="space-y-2">
+                <input type="file" accept=".csv,.txt,.xls,.html" onchange="window.handleStudentFileUpload(event)" class="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                <textarea id="st-import-paste" rows="4" oninput="window.parseStudentImportInput(this.value)" placeholder="Atau Copy-Paste baris dari Excel di sini..." class="w-full p-3 border rounded-xl text-xs font-mono"></textarea>
+              </div>
+              <div id="st-import-info" class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                Terdeteksi: 0 murid siap diimpor.
+              </div>
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('modal-import-student').classList.add('hidden')" class="px-4 py-2 border rounded-xl font-bold text-xs cursor-pointer">Batal</button>
+                <button type="button" onclick="window.confirmStudentImport()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer">Proses Impor Sekaligus</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateStudentSearch = (v) => { state.filterStudentSearch = v; renderApp(); };
+    window.updateStudentClassFilter = (v) => { state.filterStudentClass = v; renderApp(); };
+
+    window.openAddStudentModal = () => {
+      document.getElementById('modal-student-title').textContent = 'Tambah Data Murid Baru';
+      document.getElementById('st-edit-id').value = '';
+      document.getElementById('st-name').value = '';
+      document.getElementById('st-nisn').value = '';
+      document.getElementById('st-class').value = 'Kelas 1';
+      document.getElementById('st-gender').value = 'Laki-laki';
+      document.getElementById('st-parent').value = '';
+      document.getElementById('st-address').value = '';
+      document.getElementById('modal-add-student').classList.remove('hidden');
+    };
+
+    window.openEditStudentModal = (id) => {
+      const st = state.students.find(s => s.id === id);
+      if (!st) return;
+      document.getElementById('modal-student-title').textContent = 'Edit Data Murid';
+      document.getElementById('st-edit-id').value = st.id;
+      document.getElementById('st-name').value = st.name || '';
+      document.getElementById('st-nisn').value = st.nisn || '';
+      document.getElementById('st-class').value = st.classId || 'Kelas 1';
+      document.getElementById('st-gender').value = st.gender || 'Laki-laki';
+      document.getElementById('st-parent').value = st.parentName || '';
+      document.getElementById('st-address').value = st.address || '';
+      document.getElementById('modal-add-student').classList.remove('hidden');
+    };
+
+    window.saveStudent = async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('st-edit-id').value;
+      const name = document.getElementById('st-name').value.trim();
+      const nisn = document.getElementById('st-nisn').value.trim();
+      const classId = document.getElementById('st-class').value;
+      const gender = document.getElementById('st-gender').value;
+      const parentName = document.getElementById('st-parent').value.trim();
+      const address = document.getElementById('st-address').value.trim();
+
+      if (editId) {
+        const existing = state.students.find(s => s.id === editId);
+        const updated = { ...existing, name, nisn, classId, gender, parentName, address };
+        if (IS_PREVIEW) {
+          state.students = state.students.map(s => s.id === editId ? updated : s);
+        } else if (db) {
+          await setDoc(doc(db, 'students', editId), updated);
+        }
+        showToast(`Data murid ${name} berhasil diperbarui!`);
+      } else {
+        if (state.students.some(s => s.nisn === nisn)) {
+          return showToast('NISN sudah terdaftar pada murid lain!', 'error');
+        }
+        const id = 'S' + Date.now();
+        const item = { id, name, nisn, nis: state.schoolInfo.npsn || '20506021', classId, gender, parentName, address, password: '123456' };
+        if (IS_PREVIEW) {
+          state.students.push(item);
+        } else if (db) {
+          await setDoc(doc(db, 'students', id), item);
+        }
+        showToast(`Murid ${name} berhasil ditambahkan!`);
+      }
+      document.getElementById('modal-add-student').classList.add('hidden');
+      renderApp();
+    };
+
+    window.deleteStudent = async (id) => {
+      if (IS_PREVIEW) {
+        state.students = state.students.filter(s => s.id !== id);
+      } else if (db) {
+        await deleteDoc(doc(db, 'students', id));
+      }
+      showToast('Data murid dihapus');
+      renderApp();
+    };
+
+    window.downloadStudentTemplate = () => {
+      const csvContent = [
+        "Nama Lengkap Murid,NISN,NIS Sekolah,Kelas,Jenis Kelamin,Nama Orang Tua / Wali,Alamat Rumah",
+        "BUDI SANTOSO,3190001112,20506021,Kelas 1,Laki-laki,SITI AMINAH,Gedongboyountung",
+        "SITI AISYAH PUTRI,3190001113,20506021,Kelas 2,Perempuan,NUR HIDAYAH,Dlanggu"
+      ].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Template_Import_Siswa_SDN_Gedongboyountung.csv`;
+      a.click();
+      showToast('Template Siswa (.csv) berhasil diunduh!');
+    };
+
+    window.openImportStudentModal = () => {
+      state.studentImportPreview = [];
+      document.getElementById('modal-import-student').classList.remove('hidden');
+      const pasteEl = document.getElementById('st-import-paste');
+      if (pasteEl) pasteEl.value = '';
+      const infoEl = document.getElementById('st-import-info');
+      if (infoEl) infoEl.textContent = 'Terdeteksi: 0 murid siap diimpor.';
+    };
+
+    window.handleStudentFileUpload = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target.result;
+        document.getElementById('st-import-paste').value = content;
+        window.parseStudentImportInput(content);
+      };
+      reader.readAsText(file);
+    };
+
+    window.parseStudentImportInput = (rawText) => {
+      const rows = parseSpreadsheetText(rawText);
+      const parsed = [];
+      rows.forEach((cols, i) => {
+        const name = String(cols[0] || '').trim();
+        const nisn = String(cols[1] || '').trim();
+        if (!name || !nisn || name.toLowerCase().includes('nama lengkap') || nisn.toLowerCase() === 'nisn') return;
+        let classId = String(cols[3] || 'Kelas 1').trim();
+        if (/^[1-6]$/.test(classId)) classId = `Kelas ${classId}`;
+        const rawG = String(cols[4] || 'Laki-laki').trim();
+        const gender = rawG.toLowerCase().startsWith('p') ? 'Perempuan' : 'Laki-laki';
+        parsed.push({
+          id: `S_IMP_${Date.now()}_${i}`,
+          name,
+          nisn,
+          nis: String(cols[2] || state.schoolInfo.npsn || '20506021').trim(),
+          classId,
+          gender,
+          parentName: String(cols[5] || '').trim(),
+          address: String(cols[6] || '').trim(),
+          password: '123456'
+        });
+      });
+      state.studentImportPreview = parsed;
+      const infoEl = document.getElementById('st-import-info');
+      if (infoEl) infoEl.textContent = `Terdeteksi: ${parsed.length} murid valid siap diimpor sekaligus.`;
+    };
+
+    window.confirmStudentImport = async () => {
+      if (!state.studentImportPreview || state.studentImportPreview.length === 0) {
+        return showToast('Tidak ada data murid untuk diimpor!', 'error');
+      }
+      let added = 0;
+      for (const item of state.studentImportPreview) {
+        if (!state.students.some(s => s.nisn === item.nisn)) {
+          if (IS_PREVIEW) {
+            state.students.push(item);
+          } else if (db) {
+            await setDoc(doc(db, 'students', item.id), item);
+          }
+          added++;
+        }
+      }
+      state.studentImportPreview = [];
+      document.getElementById('modal-import-student').classList.add('hidden');
+      showToast(`Berhasil mengimpor ${added} murid baru sekaligus!`);
+      renderApp();
+    };
+
+    window.exportStudentsExcel = () => {
+      let rows = `<tr style="background:#1e3a8a;color:#fff;font-weight:bold;"><th>No</th><th>Nama Lengkap</th><th>NISN</th><th>NIS</th><th>Kelas</th><th>Jenis Kelamin</th><th>Nama Wali</th><th>Alamat</th></tr>`;
+      state.students.forEach((s, i) => {
+        rows += `<tr><td>${i+1}</td><td>${s.name}</td><td style="mso-number-format:'\\@';">${s.nisn}</td><td style="mso-number-format:'\\@';">${s.nis || '20506021'}</td><td>${s.classId}</td><td>${s.gender}</td><td>${s.parentName || '-'}</td><td>${s.address || '-'}</td></tr>`;
+      });
+      const blob = new Blob([`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1">${rows}</table></body></html>`], { type: 'application/vnd.ms-excel' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Data_Murid_SDN_Gedongboyountung.xls`;
+      a.click();
+      showToast('Data murid berhasil diekspor ke Excel!');
+    };
+
+    function renderTeachersView() {
+      const filtered = state.teachers.filter(t =>
+        t.name.toLowerCase().includes(state.filterTeacherSearch.toLowerCase()) ||
+        (t.nip && t.nip.includes(state.filterTeacherSearch))
+      );
+
+      const rows = filtered.length === 0
+        ? `<tr><td colspan="8" class="p-6 text-center text-slate-400 font-bold">Belum ada data guru.</td></tr>`
+        : filtered.map((t, i) => `
+          <tr class="border-b border-slate-100 hover:bg-slate-50">
+            <td class="p-3">${i + 1}</td>
+            <td class="p-3 font-bold text-slate-900">${t.name}</td>
+            <td class="p-3 font-mono font-bold text-blue-700">${t.nip || '-'}</td>
+            <td class="p-3 font-mono">${t.nuptk || '-'}</td>
+            <td class="p-3">${t.role}</td>
+            <td class="p-3 font-bold text-emerald-700">${t.classAssignment}</td>
+            <td class="p-3 font-mono">${t.phone || '-'}</td>
+            <td class="p-3 text-center">
+              <div class="flex items-center justify-center gap-1">
+                <button onclick="window.openEditTeacherModal('${t.id}')" class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg font-bold text-[11px] cursor-pointer">Edit</button>
+                <button onclick="window.deleteTeacher('${t.id}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold text-[11px] cursor-pointer">Hapus</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-2">
+              <input type="text" placeholder="Cari nama guru / NIP..." value="${state.filterTeacherSearch}" oninput="window.updateTeacherSearch(this.value)" class="p-2 border rounded-xl text-xs w-52" />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="window.downloadTeacherTemplate()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs cursor-pointer">📄 Unduh Template Guru</button>
+              <button onclick="window.openImportTeacherModal()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs">📥 Impor Template Guru</button>
+              <button onclick="window.openAddTeacherModal()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs">+ Tambah Guru</button>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-100 font-bold text-slate-700">
+                <tr><th class="p-3">No</th><th class="p-3">Nama Lengkap & Gelar</th><th class="p-3">NIP</th><th class="p-3">NUPTK</th><th class="p-3">Jabatan</th><th class="p-3">Tugas Kelas</th><th class="p-3">No. HP/WA</th><th class="p-3 text-center">Aksi</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+
+          <div id="modal-add-teacher" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-md w-full rounded-3xl p-6 space-y-4">
+              <h3 id="modal-teacher-title" class="font-black text-base">Tambah Guru / GTK</h3>
+              <form onsubmit="window.saveTeacher(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="tc-edit-id" value="" />
+                <div>
+                  <label class="font-bold block mb-1">Nama Lengkap & Gelar *</label>
+                  <input type="text" id="tc-name" required placeholder="Nama Lengkap & Gelar *" class="w-full p-2.5 border rounded-xl" />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="font-bold block mb-1">NIP (Username Login) *</label>
+                    <input type="text" id="tc-nip" required placeholder="NIP *" class="w-full p-2.5 border rounded-xl font-mono" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1">NUPTK</label>
+                    <input type="text" id="tc-nuptk" placeholder="NUPTK" class="w-full p-2.5 border rounded-xl font-mono" />
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="font-bold block mb-1">Jabatan</label>
+                    <select id="tc-role" class="w-full p-2.5 border rounded-xl font-bold">
+                      <option value="Guru Kelas">Guru Kelas</option>
+                      <option value="Guru Mata Pel">Guru Mata Pel</option>
+                      <option value="Kepala Sekolah">Kepala Sekolah</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1">Penugasan Kelas</label>
+                    <select id="tc-class" class="w-full p-2.5 border rounded-xl font-bold">
+                      <option value="Semua Kelas">Semua Kelas</option>
+                      ${ALL_CLASS_NAMES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="font-bold block mb-1">No. Telepon / WA</label>
+                    <input type="text" id="tc-phone" placeholder="0812..." class="w-full p-2.5 border rounded-xl font-mono" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1">Email</label>
+                    <input type="email" id="tc-email" placeholder="guru@email.com" class="w-full p-2.5 border rounded-xl" />
+                  </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                  <button type="button" onclick="document.getElementById('modal-add-teacher').classList.add('hidden')" class="px-4 py-2 border rounded-xl font-bold cursor-pointer">Batal</button>
+                  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold cursor-pointer">Simpan</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="modal-import-teacher" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-xl w-full rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between items-center">
+                <h3 class="font-black text-base text-slate-900">Impor Massal Data Guru & GTK (Template Excel/CSV)</h3>
+                <button onclick="window.downloadTeacherTemplate()" class="text-xs font-bold text-blue-600 underline cursor-pointer">Unduh Template Contoh</button>
+              </div>
+              <p class="text-xs text-slate-500">Unggah file template guru (<b>.csv / .xls / .txt</b>) atau <b>Copy-Paste</b> baris dari Excel di bawah ini:</p>
+              <div class="space-y-2">
+                <input type="file" accept=".csv,.txt,.xls,.html" onchange="window.handleTeacherFileUpload(event)" class="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                <textarea id="tc-import-paste" rows="4" oninput="window.parseTeacherImportInput(this.value)" placeholder="Atau Copy-Paste baris data Guru dari Excel di sini..." class="w-full p-3 border rounded-xl text-xs font-mono"></textarea>
+              </div>
+              <div id="tc-import-info" class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                Terdeteksi: 0 guru siap diimpor.
+              </div>
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('modal-import-teacher').classList.add('hidden')" class="px-4 py-2 border rounded-xl font-bold text-xs cursor-pointer">Batal</button>
+                <button type="button" onclick="window.confirmTeacherImport()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer">Proses Impor Sekaligus</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateTeacherSearch = (v) => { state.filterTeacherSearch = v; renderApp(); };
+
+    window.openAddTeacherModal = () => {
+      document.getElementById('modal-teacher-title').textContent = 'Tambah Guru / GTK Baru';
+      document.getElementById('tc-edit-id').value = '';
+      document.getElementById('tc-name').value = '';
+      document.getElementById('tc-nip').value = '';
+      document.getElementById('tc-nuptk').value = '';
+      document.getElementById('tc-role').value = 'Guru Kelas';
+      document.getElementById('tc-class').value = 'Kelas 1';
+      document.getElementById('tc-phone').value = '';
+      document.getElementById('tc-email').value = '';
+      document.getElementById('modal-add-teacher').classList.remove('hidden');
+    };
+
+    window.openEditTeacherModal = (id) => {
+      const tc = state.teachers.find(t => t.id === id);
+      if (!tc) return;
+      document.getElementById('modal-teacher-title').textContent = 'Edit Data Guru / GTK';
+      document.getElementById('tc-edit-id').value = tc.id;
+      document.getElementById('tc-name').value = tc.name || '';
+      document.getElementById('tc-nip').value = tc.nip || '';
+      document.getElementById('tc-nuptk').value = tc.nuptk || '';
+      document.getElementById('tc-role').value = tc.role || 'Guru Kelas';
+      document.getElementById('tc-class').value = tc.classAssignment || 'Semua Kelas';
+      document.getElementById('tc-phone').value = tc.phone || '';
+      document.getElementById('tc-email').value = tc.email || '';
+      document.getElementById('modal-add-teacher').classList.remove('hidden');
+    };
+
+    window.saveTeacher = async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('tc-edit-id').value;
+      const name = document.getElementById('tc-name').value.trim();
+      const nip = document.getElementById('tc-nip').value.trim();
+      const nuptk = document.getElementById('tc-nuptk').value.trim();
+      const role = document.getElementById('tc-role').value;
+      const classAssignment = document.getElementById('tc-class').value;
+      const phone = document.getElementById('tc-phone').value.trim();
+      const email = document.getElementById('tc-email').value.trim();
+
+      if (editId) {
+        const existing = state.teachers.find(t => t.id === editId);
+        const updated = { ...existing, name, nip, nuptk, role, classAssignment, phone, email };
+        if (IS_PREVIEW) {
+          state.teachers = state.teachers.map(t => t.id === editId ? updated : t);
+        } else if (db) {
+          await setDoc(doc(db, 'teachers', editId), updated);
+        }
+        showToast(`Data Guru ${name} berhasil diperbarui!`);
+      } else {
+        const id = 'T' + Date.now();
+        const item = { id, name, nip, nuptk, role, classAssignment, phone, email, password: '123456' };
+        if (IS_PREVIEW) {
+          state.teachers.push(item);
+        } else if (db) {
+          await setDoc(doc(db, 'teachers', id), item);
+        }
+        showToast(`Guru ${name} berhasil ditambahkan!`);
+      }
+      renderApp();
+    };
+
+    window.deleteTeacher = async (id) => {
+      if (IS_PREVIEW) {
+        state.teachers = state.teachers.filter(t => t.id !== id);
+      } else if (db) {
+        await deleteDoc(doc(db, 'teachers', id));
+      }
+      showToast('Data guru dihapus');
+      renderApp();
+    };
+
+    window.downloadTeacherTemplate = () => {
+      const csvContent = [
+        "Nama Lengkap & Gelar,NIP,NUPTK,Jabatan,Penugasan Kelas,No HP / WA,Email",
+        "ALFIAN FIRDAUS S.Pd,198809022023211005,3234766667110023,Guru Kelas,Kelas 5,081234567888,alfian@sdngedong.sch.id",
+        "DONY RIYANTORO S.Pd,198605062023211001,0838764665130250,Guru Kelas,Kelas 6,081234567889,dony@sdngedong.sch.id"
+      ].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Template_Import_Guru_SDN_Gedongboyountung.csv`;
+      a.click();
+      showToast('Template Guru (.csv) berhasil diunduh!');
+    };
+
+    window.openImportTeacherModal = () => {
+      state.teacherImportPreview = [];
+      document.getElementById('modal-import-teacher').classList.remove('hidden');
+      const pasteEl = document.getElementById('tc-import-paste');
+      if (pasteEl) pasteEl.value = '';
+      const infoEl = document.getElementById('tc-import-info');
+      if (infoEl) infoEl.textContent = 'Terdeteksi: 0 guru siap diimpor.';
+    };
+
+    window.handleTeacherFileUpload = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target.result;
+        document.getElementById('tc-import-paste').value = content;
+        window.parseTeacherImportInput(content);
+      };
+      reader.readAsText(file);
+    };
+
+    window.parseTeacherImportInput = (rawText) => {
+      const rows = parseSpreadsheetText(rawText);
+      const parsed = [];
+      rows.forEach((cols, i) => {
+        const name = String(cols[0] || '').trim();
+        const nip = String(cols[1] || '').trim();
+        if (!name || !nip || name.toLowerCase().includes('nama lengkap') || nip.toLowerCase() === 'nip') return;
+        let classAssignment = String(cols[4] || 'Semua Kelas').trim();
+        if (/^[1-6]$/.test(classAssignment)) classAssignment = `Kelas ${classAssignment}`;
+        parsed.push({
+          id: `T_IMP_${Date.now()}_${i}`,
+          name,
+          nip,
+          nuptk: String(cols[2] || '').trim(),
+          role: String(cols[3] || 'Guru Kelas').trim(),
+          classAssignment,
+          phone: String(cols[5] || '').trim(),
+          email: String(cols[6] || '').trim(),
+          password: '123456'
+        });
+      });
+      state.teacherImportPreview = parsed;
+      const infoEl = document.getElementById('tc-import-info');
+      if (infoEl) infoEl.textContent = `Terdeteksi: ${parsed.length} guru valid siap diimpor sekaligus.`;
+    };
+
+    window.confirmTeacherImport = async () => {
+      if (!state.teacherImportPreview || state.teacherImportPreview.length === 0) {
+        return showToast('Tidak ada data guru untuk diimpor!', 'error');
+      }
+      let added = 0;
+      for (const item of state.teacherImportPreview) {
+        if (!state.teachers.some(t => t.nip === item.nip)) {
+          if (IS_PREVIEW) {
+            state.teachers.push(item);
+          } else if (db) {
+            await setDoc(doc(db, 'teachers', item.id), item);
+          }
+          added++;
+        }
+      }
+      state.teacherImportPreview = [];
+      showToast(`Berhasil mengimpor ${added} guru baru sekaligus!`);
+      renderApp();
+    };
+
+    function renderClassesView() {
+      const isAdmin = state.currentUser.role === 'Admin';
+      const teacherOptions = state.teachers.length === 0
+        ? `<option value="">-- Belum Ada Data Guru --</option>`
+        : state.teachers.map(t => `<option value="${t.name}">${t.name} (${t.role})</option>`).join('');
+
+      const cards = state.classesList.length === 0
+        ? `<div class="col-span-full text-center py-6 text-xs text-slate-400 font-bold">Belum ada data rombel. Klik "+ Tambah / Atur Rombel" di atas.</div>`
+        : state.classesList.map(c => {
+            const cnt = state.students.filter(s => s.classId === c.id).length;
+            const dropdownHtml = isAdmin ? `
+              <div class="pt-2 border-t border-slate-200/80 space-y-1">
+                <label class="text-[11px] font-bold text-slate-500 block">Pilih Guru Wali Kelas:</label>
+                <select onchange="window.quickUpdateClassTeacher('${c.id}', this.value)" class="w-full p-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 cursor-pointer">
+                  <option value="${c.teacher || ''}">${c.teacher || '-- Pilih Guru Wali --'}</option>
+                  ${state.teachers.filter(t => t.name !== c.teacher).map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
+                </select>
+              </div>
+            ` : `<div class="text-xs text-slate-600 pt-2 border-t">Wali Kelas: <b class="text-slate-900">${c.teacher || '-'}</b></div>`;
+
+            return `
+              <div class="p-4 border rounded-2xl bg-slate-50/70 space-y-3 shadow-2xs">
+                <div class="flex justify-between items-center">
+                  <span class="font-black text-base text-slate-800">${c.name}</span>
+                  <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">${cnt} Siswa</span>
+                </div>
+                ${dropdownHtml}
+              </div>
+            `;
+          }).join('');
+
+      return `
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <div>
+              <h3 class="font-black text-sm">Data Rombongan Belajar (Rombel) & Wali Kelas</h3>
+              <p class="text-xs text-slate-500">Pilih langsung Guru Wali Kelas melalui menu dropdown pada masing-masing kartu rombel.</p>
+            </div>
+            ${isAdmin ? `<button onclick="document.getElementById('modal-add-class').classList.remove('hidden')" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer">+ Tambah / Atur Rombel</button>` : ''}
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${cards}</div>
+
+          <div id="modal-add-class" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-md w-full rounded-3xl p-6 space-y-4">
+              <h3 class="font-black text-base">Tambah / Atur Rombel & Wali Kelas</h3>
+              <form onsubmit="window.saveClass(event)" class="space-y-3 text-xs">
+                <div>
+                  <label class="font-bold block mb-1">Pilih Kelas (Rombel)</label>
+                  <select id="cl-name" class="w-full p-2.5 border rounded-xl font-bold">
+                    ${ALL_CLASS_NAMES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Pilih Guru Wali Kelas (Dropdown)</label>
+                  <select id="cl-teacher" required class="w-full p-2.5 border rounded-xl font-bold">
+                    ${teacherOptions}
+                  </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                  <button type="button" onclick="document.getElementById('modal-add-class').classList.add('hidden')" class="px-4 py-2 border rounded-xl font-bold cursor-pointer">Batal</button>
+                  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold cursor-pointer">Simpan</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.quickUpdateClassTeacher = async (classId, teacherName) => {
+      if (!teacherName) return;
+      const existing = state.classesList.find(c => c.id === classId) || { id: classId, name: classId, level: classId.replace('Kelas ', '') };
+      const updated = { ...existing, teacher: teacherName };
+      if (IS_PREVIEW) {
+        const idx = state.classesList.findIndex(c => c.id === classId);
+        if (idx >= 0) state.classesList[idx] = updated; else state.classesList.push(updated);
+      } else if (db) {
+        await setDoc(doc(db, 'classes', classId), updated);
+      }
+      showToast(`Wali ${classId} diperbarui menjadi ${teacherName}!`);
+      renderApp();
+    };
+
+    window.saveClass = async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('cl-name').value;
+      const teacher = document.getElementById('cl-teacher').value.trim();
+      const item = { id: name, name, level: name.replace('Kelas ', ''), teacher };
+      if (IS_PREVIEW) {
+        const idx = state.classesList.findIndex(c => c.id === name);
+        if (idx >= 0) state.classesList[idx] = item; else state.classesList.push(item);
+      } else if (db) {
+        await setDoc(doc(db, 'classes', name), item);
+      }
+      showToast(`Rombel ${name} (Wali: ${teacher}) berhasil disimpan!`);
+      renderApp();
+    };
+
+    function renderAttendanceView() {
+      const effClass = state.filterAttClass;
+      const visStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
+
+      const rows = visStudents.length === 0
+        ? `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">Belum ada murid pada filter kelas ini.</td></tr>`
+        : visStudents.map((st, idx) => {
+            const rec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === state.todayStr);
+            const stText = rec?.status || 'Belum Presensi';
+            const badgeColor =
+              stText === 'Hadir' ? 'bg-emerald-100 text-emerald-800' :
+              stText === 'Terlambat' ? 'bg-amber-100 text-amber-800' :
+              stText === 'Sakit' ? 'bg-blue-100 text-blue-800' :
+              stText === 'Izin' ? 'bg-indigo-100 text-indigo-800' :
+              stText === 'Alpa' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600';
+            return `
+              <tr class="border-b border-slate-100 hover:bg-slate-50">
+                <td class="p-3">${idx + 1}</td>
+                <td class="p-3 font-bold text-slate-900">${st.name}</td>
+                <td class="p-3 font-bold text-blue-700">${st.classId}</td>
+                <td class="p-3 font-mono">${st.nisn}</td>
+                <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${stText}</span></td>
+                <td class="p-3 font-mono">${rec?.time || '-'}</td>
+                <td class="p-3 text-center">
+                  <div class="flex justify-center gap-1">
+                    ${['Hadir','Terlambat','Sakit','Izin','Alpa'].map(opt => `
+                      <button onclick="window.recordAttendance('${st.nisn}', '${opt}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${rec?.status === opt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white hover:bg-slate-100 text-slate-700'}">${opt[0]}</button>
+                    `).join('')}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div class="space-y-1 text-center lg:text-left">
+              <h3 class="font-black text-base">Presensi Harian Siswa (${effClass})</h3>
+              <p class="text-xs text-slate-500">Pilih filter kelas, masukkan NISN, scan kamera, atau klik tombol cepat H/T/S/I/A.</p>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-2">
+              <select onchange="window.updateAttClassFilter(this.value)" class="p-2.5 border rounded-xl text-xs font-bold bg-slate-50">
+                <option value="Semua" ${effClass === 'Semua' ? 'selected' : ''}>Semua Kelas (${state.students.length})</option>
+                ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${effClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+              <form onsubmit="window.handleQuickScan(event)" class="flex gap-2">
+                <input type="text" id="scan-nisn-input" placeholder="Ketik / Scan NISN..." class="p-2.5 border rounded-xl text-xs font-mono font-bold w-44" />
+                <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer">Catat Hadir</button>
+              </form>
+              <button onclick="window.openCameraScannerModal()" class="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center gap-1.5">
+                📷 Scan Kamera
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-100 font-bold text-slate-700">
+                <tr><th class="p-3">No</th><th class="p-3">Nama Siswa</th><th class="p-3">Kelas</th><th class="p-3">NISN</th><th class="p-3">Status (${state.todayStr})</th><th class="p-3">Waktu</th><th class="p-3 text-center">Ubah Status Cepat</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateAttClassFilter = (val) => {
+      state.filterAttClass = val;
+      renderApp();
+    };
+
+    window.handleQuickScan = (e) => {
+      e.preventDefault();
+      const val = document.getElementById('scan-nisn-input').value.trim();
+      window.recordAttendance(val, 'Hadir');
+    };
+
+    window.recordAttendance = async (code, status, method = 'Input Manual') => {
+      const clean = String(code || '').replace(/^SISWA-/i, '').trim();
+      const st = state.students.find(s => s.nisn === clean || s.id === clean);
+      if (!st) return showToast(`NISN "${clean}" tidak ditemukan!`, 'error');
+
+      const recordId = `att_${state.todayStr}_${st.id}`;
+      const newRec = {
+        id: recordId,
+        studentId: st.id,
+        studentName: st.name,
+        nisn: st.nisn,
+        classId: st.classId,
+        date: state.todayStr,
+        status,
+        time: new Date().toTimeString().substring(0, 5),
+        method
+      };
+
+      playBeep();
+      if (IS_PREVIEW) {
+        const idx = state.attendanceRecords.findIndex(r => r.id === recordId);
+        if (idx >= 0) state.attendanceRecords[idx] = newRec; else state.attendanceRecords.push(newRec);
+      } else if (db) {
+        await setDoc(doc(db, 'attendance', recordId), newRec);
+      }
+      showToast(`Presensi ${st.name} (${st.classId}): ${status}`);
+      renderApp();
+    };
+
+    // RENDER REKAPITULASI PRESENSI SISWA DENGAN FORMAT A4 PORTRAIT DAN DINAMIC PAGINATION
+    function renderRecapView() {
+      const effClass = state.filterRecapClass;
+      const filteredStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
+
+      const assignedClassObj = state.classesList.find(c => c.id === effClass);
+      const teacherNameForClass = assignedClassObj?.teacher || (effClass !== 'Semua' ? (state.teachers.find(t => t.classAssignment === effClass)?.name || '-') : state.currentUser.name);
+      const teacherObjForClass = state.teachers.find(t => t.name === teacherNameForClass);
+      const teacherNipForClass = teacherObjForClass?.nip || '-';
+      const teacherRoleTitle = effClass !== 'Semua' ? `Wali Kelas ${effClass}` : 'Guru / Petugas';
+
+      const rows = filteredStudents.length === 0
+        ? `<tr><td colspan="8" class="p-4 text-center text-slate-400 font-bold">Belum ada data murid pada kelas ini.</td></tr>`
+        : filteredStudents.map((st, idx) => {
+            const recs = state.attendanceRecords.filter(r => r.studentId === st.id);
+            const h = recs.filter(r => r.status === 'Hadir').length;
+            const t = recs.filter(r => r.status === 'Terlambat').length;
+            const si = recs.filter(r => r.status === 'Sakit' || r.status === 'Izin').length;
+            const a = recs.filter(r => r.status === 'Alpa').length;
+            return `
+              <tr class="text-center">
+                <td style="width: 32px;" class="border border-slate-600 p-1.5">${idx + 1}</td>
+                <td style="width: 85px;" class="border border-slate-600 p-1.5 font-mono">${st.nisn}</td>
+                <td class="border border-slate-600 p-1.5 text-left font-bold">${st.name}</td>
+                <td style="width: 65px;" class="border border-slate-600 p-1.5">${st.classId}</td>
+                <td style="width: 50px;" class="border border-slate-600 p-1.5 font-bold text-emerald-700">${h}</td>
+                <td style="width: 55px;" class="border border-slate-600 p-1.5 font-bold text-amber-700">${t}</td>
+                <td style="width: 60px;" class="border border-slate-600 p-1.5 font-bold text-blue-700">${si}</td>
+                <td style="width: 45px;" class="border border-slate-600 p-1.5 font-bold text-rose-700">${a}</td>
+              </tr>
+            `;
+          }).join('');
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3 no-print">
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="text-xs font-bold text-slate-700">Filter Kelas:</label>
+              <select onchange="window.updateRecapClass(this.value)" class="p-2 border rounded-xl text-xs font-bold">
+                <option value="Semua" ${effClass === 'Semua' ? 'selected' : ''}>Semua Kelas</option>
+                ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${effClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+
+              <select onchange="window.updateRecapPeriod(this.value)" class="p-2 border rounded-xl text-xs font-bold bg-blue-50 text-blue-900 border-blue-200">
+                <option value="Per Bulan" ${state.filterRecapPeriod === 'Per Bulan' ? 'selected' : ''}>Periode: Per Bulan</option>
+                <option value="Per Semester" ${state.filterRecapPeriod === 'Per Semester' ? 'selected' : ''}>Periode: Per Semester</option>
+                <option value="Per Tahunan" ${state.filterRecapPeriod === 'Per Tahunan' ? 'selected' : ''}>Periode: Per Tahunan</option>
+              </select>
+
+              <input type="month" value="${state.filterRecapMonthYear}" onchange="window.updateRecapMonthYear(this.value)" class="p-2 border rounded-xl text-xs font-bold" />
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="window.downloadRecapMonthly()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📥 Unduh Bulanan</button>
+              <button onclick="window.downloadRecapSemester()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📥 Unduh Semester</button>
+              <button onclick="window.downloadRecapYearly()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📥 Unduh Tahunan</button>
+              <button onclick="window.triggerUniversalPrint('Rekap Presensi - SDN Gedongboyountung')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">🖨️ Cetak Laporan</button>
+            </div>
+          </div>
+
+          <div id="printable-area" class="bg-white p-8 rounded-3xl border border-slate-200 recap-print-container space-y-6 mx-auto">
+            <div class="border-b-2 border-slate-900 pb-4 flex items-center gap-4">
+              <div class="shrink-0">${renderSchoolLogoHtml("w-14 h-14", "text-sm")}</div>
+              <div class="flex-1 text-center">
+                <h2 class="text-sm font-black uppercase text-slate-900">PEMERINTAH KABUPATEN LAMONGAN</h2>
+                <h3 class="text-base font-black uppercase text-blue-900">${state.schoolInfo.name || 'SDN GEDONGBOYOUNTUNG'}</h3>
+                <p class="text-[11px] text-slate-600">${state.schoolInfo.address || ''} • NPSN: ${state.schoolInfo.npsn || '20506021'}</p>
+                <p class="text-xs font-bold text-slate-800 mt-1 uppercase">REKAPITULASI PRESENSI SISWA — KELAS: ${effClass.toUpperCase()} (${state.filterRecapPeriod}: ${state.filterRecapMonthYear})</p>
+              </div>
+            </div>
+
+            <table class="recap-table w-full text-xs border-collapse border border-slate-600">
+              <thead>
+                <tr class="bg-slate-100 font-bold text-center">
+                  <th style="width: 32px;" class="border border-slate-600 p-1.5">No</th>
+                  <th style="width: 85px;" class="border border-slate-600 p-1.5">NISN</th>
+                  <th class="border border-slate-600 p-1.5 text-left">Nama Siswa</th>
+                  <th style="width: 65px;" class="border border-slate-600 p-1.5">Kelas</th>
+                  <th style="width: 50px;" class="border border-slate-600 p-1.5">Hadir</th>
+                  <th style="width: 55px;" class="border border-slate-600 p-1.5">Terlambat</th>
+                  <th style="width: 60px;" class="border border-slate-600 p-1.5">Sakit/Izin</th>
+                  <th style="width: 45px;" class="border border-slate-600 p-1.5">Alpa</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+
+            <div class="recap-signature-section pt-6 flex justify-between text-xs text-center font-bold">
+              <div style="width: 220px;">
+                <p class="mb-14">Mengetahui,<br/>Kepala Sekolah</p>
+                <p class="underline font-bold">${state.schoolInfo.principal || '-'}</p>
+                <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
+              </div>
+              <div style="width: 220px;">
+                <p class="mb-14">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
+                <p class="underline font-bold">${teacherNameForClass}</p>
+                <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateRecapClass = (v) => { state.filterRecapClass = v; renderApp(); };
+    window.updateRecapPeriod = (v) => { state.filterRecapPeriod = v; renderApp(); };
+    window.updateRecapMonthYear = (v) => { state.filterRecapMonthYear = v; renderApp(); };
+
+    window.downloadRecapMonthly = () => { window.downloadRecapExcel('Bulanan'); };
+    window.downloadRecapSemester = () => { window.downloadRecapExcel('Semester'); };
+    window.downloadRecapYearly = () => { window.downloadRecapExcel('Tahunan'); };
+
+    window.downloadRecapExcel = (type = 'Bulanan') => {
+      const effClass = state.filterRecapClass;
+      const list = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
+
+      let rows = `<tr><th colspan="8" style="background:#1e3a8a;color:#fff;font-size:14px;">REKAP PRESENSI SISWA (${type}) KELAS ${effClass.toUpperCase()} - ${state.schoolInfo.name.toUpperCase()}</th></tr>`;
+      rows += `<tr style="background:#e2e8f0;font-weight:bold;"><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Kelas</th><th>Hadir</th><th>Terlambat</th><th>Sakit/Izin</th><th>Alpa</th></tr>`;
+      list.forEach((st, idx) => {
+        const recs = state.attendanceRecords.filter(r => r.studentId === st.id);
+        const h = recs.filter(r => r.status === 'Hadir').length;
+        const t = recs.filter(r => r.status === 'Terlambat').length;
+        const si = recs.filter(r => r.status === 'Sakit' || r.status === 'Izin').length;
+        const a = recs.filter(r => r.status === 'Alpa').length;
+        rows += `<tr><td>${idx+1}</td><td style="mso-number-format:'\\@';">${st.nisn}</td><td>${st.name}</td><td>${st.classId}</td><td>${h}</td><td>${t}</td><td>${si}</td><td>${a}</td></tr>`;
+      });
+
+      const blob = new Blob([`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1">${rows}</table></body></html>`], { type: 'application/vnd.ms-excel' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Rekap_Presensi_${type}_${effClass.replace(/\s+/g, '_')}_${state.todayStr}.xls`;
+      a.click();
+      showToast(`Rekap presensi ${type} kelas ${effClass} berhasil diunduh!`);
+    };
+
+    function renderCardsView(onlyMine = false) {
+      const list = onlyMine
+        ? state.students.filter(s => s.id === state.currentUser.id || s.nisn === state.currentUser.username)
+        : state.students.filter(s => {
+            const mClass = state.filterCardClass === 'Semua' || s.classId === state.filterCardClass;
+            const mSearch = s.name.toLowerCase().includes(state.filterCardSearch.toLowerCase()) || s.nisn.includes(state.filterCardSearch);
+            return mClass && mSearch;
+          });
+
+      let sheetsHtml = '';
+      const cardsPerPage = 8;
+      for (let i = 0; i < list.length; i += cardsPerPage) {
+        const pageCards = list.slice(i, i + cardsPerPage);
+        const pageCardsHtml = pageCards.map(st => `
+          <div class="student-id-card" style="width: 85.6mm; height: 54mm; border: 1.5px solid #1e293b; border-radius: 4mm; padding: 3.5mm; background: #ffffff; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="flex items-center gap-2 border-b border-slate-300 pb-1.5">
+              <div class="shrink-0">${renderSchoolLogoHtml("w-8 h-8", "text-[10px]")}</div>
+              <div class="overflow-hidden">
+                <div class="text-[8px] font-black text-blue-700 uppercase">KARTU PELAJAR</div>
+                <div class="font-black text-[10px] text-slate-900 uppercase truncate">${state.schoolInfo.name}</div>
+                <div class="text-[8px] text-slate-500">NPSN: ${state.schoolInfo.npsn}</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2 my-auto">
+              <div class="space-y-0.5 flex-1 overflow-hidden">
+                <div class="font-black text-xs text-slate-900 leading-tight uppercase truncate">${st.name}</div>
+                <div class="text-[10px] font-mono font-bold text-slate-700">NISN: ${st.nisn}</div>
+                <span class="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-[9px] font-bold">${st.classId}</span>
+              </div>
+              <div class="shrink-0">${createQRSVG(`SISWA-${st.nisn}`, 78)}</div>
+            </div>
+          </div>
+        `).join('');
+
+        sheetsHtml += `
+          <div class="cards-print-sheet" style="display: grid; grid-template-columns: repeat(2, 85.6mm); grid-template-rows: repeat(4, 54mm); column-gap: 4mm; row-gap: 3.5mm; justify-content: center; align-content: start; width: 100%; page-break-after: always; break-after: page; box-sizing: border-box;">
+            ${pageCardsHtml}
+          </div>
+        `;
+      }
+
+      const screenCardsHtml = list.length === 0
+        ? `<div class="col-span-full bg-white p-8 rounded-3xl text-center text-xs text-slate-400 font-bold">Belum ada data kartu pelajar pada filter ini.</div>`
+        : list.map(st => `
+          <div class="bg-white rounded-3xl border-2 border-slate-800 p-5 shadow-sm flex flex-col justify-between space-y-3 break-inside-avoid">
+            <div class="flex items-center gap-3 border-b border-slate-200 pb-2.5">
+              <div class="shrink-0">${renderSchoolLogoHtml("w-10 h-10", "text-xs")}</div>
+              <div class="overflow-hidden">
+                <div class="text-[10px] font-black text-blue-700 uppercase">KARTU PELAJAR</div>
+                <div class="font-black text-xs text-slate-900 uppercase truncate">${state.schoolInfo.name}</div>
+                <div class="text-[10px] text-slate-500">NPSN: ${state.schoolInfo.npsn}</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="space-y-1 flex-1">
+                <div class="font-black text-sm text-slate-900 leading-snug">${st.name}</div>
+                <div class="text-xs font-mono font-bold text-slate-600">NISN: ${st.nisn}</div>
+                <span class="inline-block px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-[10px] font-bold">${st.classId}</span>
+              </div>
+              <div class="shrink-0">${createQRSVG(`SISWA-${st.nisn}`, 92)}</div>
+            </div>
+          </div>
+        `).join('');
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3 no-print">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="font-black text-sm mr-2">Kartu Pelajar QR Code</h3>
+              ${!onlyMine ? `
+                <select onchange="window.updateCardClassFilter(this.value)" class="p-2 border rounded-xl text-xs font-bold">
+                  <option value="Semua" ${state.filterCardClass === 'Semua' ? 'selected' : ''}>Semua Kelas (${state.students.length})</option>
+                  ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${state.filterCardClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+                <input type="text" placeholder="Cari nama / NISN..." value="${state.filterCardSearch}" oninput="window.updateCardSearch(this.value)" class="p-2 border rounded-xl text-xs w-44" />
+              ` : ''}
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              ${!onlyMine ? `
+                <button onclick="window.openCameraScannerModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">📷 Scan QR Pakai Kamera</button>
+              ` : ''}
+              <button onclick="window.triggerUniversalPrint('Kartu Pelajar QR - SDN Gedongboyountung')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">🖨️ Cetak Kartu (${list.length})</button>
+            </div>
+          </div>
+          <div id="printable-area">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">${screenCardsHtml}</div>
+            <div class="hidden print:block">${sheetsHtml}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateCardClassFilter = (v) => { state.filterCardClass = v; renderApp(); };
+    window.updateCardSearch = (v) => { state.filterCardSearch = v; renderApp(); };
+
+    let lastScannedCode = '';
+    let lastScannedTime = 0;
+    let scanFrameCount = 0;
+
+    // Helper Pembaruan Diagnostik Visual Scanner
+    window.updateScannerDiagnostics = ({ camState, scanState, rawResult, errorMsg }) => {
+      const camEl = document.getElementById('diag-cam-status');
+      const scanEl = document.getElementById('diag-scan-status');
+      const rawEl = document.getElementById('diag-raw-result');
+      const errEl = document.getElementById('diag-error-msg');
+      if (camEl && camState !== undefined) camEl.textContent = camState;
+      if (scanEl && scanState !== undefined) scanEl.textContent = scanState;
+      if (rawEl && rawResult !== undefined) rawEl.textContent = rawResult || '-';
+      if (errEl) {
+        if (errorMsg) {
+          errEl.textContent = errorMsg;
+          errEl.classList.remove('hidden');
+        } else {
+          errEl.textContent = '';
+          errEl.classList.add('hidden');
+        }
+      }
+    };
+
+    // Callback Utama Pemrosesan Hasil QR Code (Terhubung langsung ke fungsi recordAttendance yang sama dengan Input Manual)
+    window.processDetectedQrCode = async (rawQrText, sourceLabel = 'Kamera QR') => {
+      if (!rawQrText) return;
+      const rawStr = String(rawQrText).trim();
+      if (!rawStr) return;
+
+      // Cooldown 2.5 detik untuk mencegah scan beruntun pada kartu yang sama
+      const now = Date.now();
+      if (rawStr === lastScannedCode && now - lastScannedTime < 2500) {
+        return;
+      }
+      lastScannedCode = rawStr;
+      lastScannedTime = now;
+
+      // 1. Tampilkan hasil teks QR Code mentah pada diagnostik
+      window.updateScannerDiagnostics({
+        scanState: '🎯 QR Code Berhasil Terbaca!',
+        rawResult: rawStr,
+        errorMsg: ''
+      });
+
+      const resEl = document.getElementById('qr-scan-result');
+      if (resEl) {
+        resEl.className = "text-xs font-bold text-blue-800 bg-blue-100 p-2.5 rounded-xl border border-blue-300";
+        resEl.textContent = `🔍 QR Terbaca: "${rawStr}" — Mencari data siswa...`;
+      }
+
+      // 2. Normalisasi hasil sesuai format QR SISGENTA (contoh: "SISWA-3195240210" atau JSON/teks menjadi NISN murni)
+      let normalizedNisn = rawStr.replace(/^SISWA[-_:\s]*/i, '').trim();
+      const digitMatch = normalizedNisn.match(/\d{4,20}/);
+      if (digitMatch && !state.students.some(s => String(s.nisn).trim() === normalizedNisn)) {
+        normalizedNisn = digitMatch[0];
+      }
+
+      // 3. Cari data siswa berdasarkan NISN atau ID
+      const matchedStudent = state.students.find(s =>
+        String(s.nisn).trim() === normalizedNisn ||
+        String(s.nisn).trim() === rawStr ||
+        String(s.id).trim() === normalizedNisn ||
+        String(s.id).trim() === rawStr
+      );
+
+      if (!matchedStudent) {
+        window.updateScannerDiagnostics({
+          scanState: '⚠️ QR Terbaca, Siswa Tidak Ditemukan',
+          rawResult: `${rawStr} (NISN: ${normalizedNisn})`,
+          errorMsg: `Data siswa dengan NISN "${normalizedNisn}" tidak ditemukan di database.`
+        });
+        if (resEl) {
+          resEl.className = "text-xs font-bold text-rose-800 bg-rose-100 p-2.5 rounded-xl border border-rose-300";
+          resEl.textContent = `❌ QR Terbaca (${rawStr}), tetapi NISN "${normalizedNisn}" tidak terdaftar!`;
+        }
+        window.showToast(`QR Terbaca (${normalizedNisn}), namun siswa tidak ditemukan!`, 'error');
+        return;
+      }
+
+      // 4. Panggil fungsi absensi yang sama persis dengan input manual
+      await window.recordAttendance(matchedStudent.nisn, 'Hadir', sourceLabel);
+
+      // 5. Tampilkan hasil absensi pada modal agar scanner tetap bisa memindai siswa berikutnya
+      const modal = document.getElementById('modal-camera-scanner');
+      if (modal && state.isCameraScanning) {
+        modal.classList.remove('hidden');
+      }
+
+      window.updateScannerDiagnostics({
+        camState: '🟢 Kamera Aktif',
+        scanState: `✅ Tercatat Hadir: ${matchedStudent.name} (${matchedStudent.classId})`,
+        rawResult: `${rawStr} → NISN: ${matchedStudent.nisn}`,
+        errorMsg: ''
+      });
+
+      const updatedResEl = document.getElementById('qr-scan-result');
+      if (updatedResEl) {
+        updatedResEl.className = "text-xs font-bold text-emerald-800 bg-emerald-100 p-2.5 rounded-xl border border-emerald-300";
+        updatedResEl.textContent = `✅ BERHASIL: ${matchedStudent.name} (${matchedStudent.classId}) — NISN ${matchedStudent.nisn} tercatat HADIR!`;
+      }
+    };
+
+    // Loop Decoding Frame Video secara Langsung menggunakan Canvas + jsQR + BarcodeDetector
+    function attachContinuousVideoDecoder(videoElement) {
+      if (fallbackScanTimer) {
+        clearInterval(fallbackScanTimer);
+        fallbackScanTimer = null;
+      }
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      let nativeDetector = null;
+      if ('BarcodeDetector' in window) {
+        try {
+          nativeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        } catch {}
+      }
+
+      scanFrameCount = 0;
+      fallbackScanTimer = setInterval(async () => {
+        if (!state.isCameraScanning) return;
+        const vid = videoElement || document.querySelector('#qr-reader-box video');
+        if (!vid || vid.readyState < 2 || vid.videoWidth === 0) return;
+
+        scanFrameCount++;
+        if (scanFrameCount % 5 === 0) {
+          const scanEl = document.getElementById('diag-scan-status');
+          if (scanEl && !scanEl.textContent.includes('Tercatat Hadir')) {
+            scanEl.textContent = `🔄 Mencari QR Code... (Frame #${scanFrameCount} • ${vid.videoWidth}x${vid.videoHeight})`;
+          }
+        }
+
+        // Metode A: jsQR pada ImageData Canvas (Bekerja di semua browser: Chrome, Safari, Edge, Firefox)
+        if (typeof jsQR !== 'undefined') {
+          try {
+            canvas.width = vid.videoWidth;
+            canvas.height = vid.videoHeight;
+            ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'attemptBoth'
+            });
+            if (qrCode && qrCode.data) {
+              window.processDetectedQrCode(qrCode.data, 'Kamera QR (jsQR)');
+              return;
+            }
+          } catch (e) {}
+        }
+
+        // Metode B: Native BarcodeDetector API
+        if (nativeDetector) {
+          try {
+            const barcodes = await nativeDetector.detect(vid);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              window.processDetectedQrCode(barcodes[0].rawValue, 'Kamera QR (Native)');
+            }
+          } catch (e) {}
+        }
+      }, 150);
+    }
+
+    window.startCameraWithConfig = async (cameraIdOrMode = null) => {
+      const resEl = document.getElementById('qr-scan-result');
+      const readerBox = document.getElementById('qr-reader-box');
+      if (!readerBox) return;
+
+      if (fallbackScanTimer) { clearInterval(fallbackScanTimer); fallbackScanTimer = null; }
+      if (fallbackVideoStream) { fallbackVideoStream.getTracks().forEach(t => t.stop()); fallbackVideoStream = null; }
+      if (html5QrScanner) {
+        try {
+          if (html5QrScanner.isScanning) await html5QrScanner.stop();
+          await html5QrScanner.clear();
+        } catch {}
+        html5QrScanner = null;
+      }
+
+      window.updateScannerDiagnostics({
+        camState: '⏳ Mengakses kamera perangkat...',
+        scanState: 'Menunggu video kamera aktif...',
+        rawResult: '-',
+        errorMsg: ''
+      });
+
+      if (resEl) {
+        resEl.className = "text-xs font-bold text-blue-700 bg-blue-50 p-2.5 rounded-xl border border-blue-200";
+        resEl.textContent = "⏳ Sedang menghubungkan ke kamera perangkat...";
+      }
+
+      // 1. Coba inisialisasi dengan Html5Qrcode + Pasang juga decoder kanvas jsQR paralel
+      if (typeof Html5Qrcode !== 'undefined') {
+        try {
+          html5QrScanner = new Html5Qrcode("qr-reader-box");
+          try {
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+              state.cameraDevices = devices;
+              const selectEl = document.getElementById('camera-device-select');
+              if (selectEl) {
+                const backIdx = devices.findIndex(d => /back|rear|belakang|environment/i.test(d.label || ''));
+                const defaultIdx = backIdx >= 0 ? backIdx : devices.length - 1;
+                selectEl.innerHTML = devices.map((d, idx) =>
+                  `<option value="${d.id}" ${(cameraIdOrMode === d.id || (!cameraIdOrMode && idx === defaultIdx)) ? 'selected' : ''}>📷 ${d.label || 'Kamera ' + (idx + 1)}</option>`
+                ).join('');
+                selectEl.classList.remove('hidden');
+              }
+            }
+          } catch {}
+
+          const configsToTry = [];
+          if (cameraIdOrMode && typeof cameraIdOrMode === 'string' && cameraIdOrMode !== 'environment' && cameraIdOrMode !== 'user') {
+            configsToTry.push(cameraIdOrMode);
+          }
+          configsToTry.push({ facingMode: { ideal: "environment" } });
+          if (state.cameraDevices && state.cameraDevices.length > 0) {
+            const backCam = state.cameraDevices.find(d => /back|rear|belakang|environment/i.test(d.label || ''));
+            configsToTry.push(backCam ? backCam.id : state.cameraDevices[state.cameraDevices.length - 1].id);
+          }
+          configsToTry.push({ facingMode: "user" });
+
+          let started = false;
+          for (const cfg of configsToTry) {
+            if (started) break;
+            try {
+              await html5QrScanner.start(
+                cfg,
+                { fps: 12, qrbox: { width: 220, height: 220 } },
+                (decodedText) => {
+                  window.processDetectedQrCode(decodedText, 'Kamera QR');
+                },
+                () => {}
+              );
+              started = true;
+            } catch {}
+          }
+
+          if (started) {
+            window.updateScannerDiagnostics({
+              camState: '🟢 Kamera Aktif (Html5Qrcode + jsQR Engine)',
+              scanState: '🔄 Scanner sedang mencari QR Code...',
+              errorMsg: ''
+            });
+            if (resEl) {
+              resEl.className = "text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200";
+              resEl.textContent = "✅ Kamera Aktif! Arahkan Kartu QR Pelajar ke kotak kamera.";
+            }
+            // Jalankan juga loop pembacaan kanvas jsQR pada elemen video Html5Qrcode agar deteksi 2x lebih responsif
+            setTimeout(() => {
+              const innerVideo = document.querySelector('#qr-reader-box video');
+              if (innerVideo) attachContinuousVideoDecoder(innerVideo);
+            }, 400);
+            return;
+          }
+        } catch (err) {
+          console.warn("Html5Qrcode init warning:", err);
+        }
+      }
+
+      // 2. Fallback Native getUserMedia + Continuous jsQR & BarcodeDetector Loop
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          let stream = null;
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } },
+              audio: false
+            });
+          } catch {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
+          fallbackVideoStream = stream;
+          readerBox.innerHTML = `<video id="native-qr-video" autoplay playsinline muted class="w-full h-60 object-cover rounded-2xl"></video>`;
+          const videoEl = document.getElementById('native-qr-video');
+          if (videoEl) {
+            videoEl.srcObject = stream;
+            await videoEl.play();
+            attachContinuousVideoDecoder(videoEl);
+          }
+
+          window.updateScannerDiagnostics({
+            camState: '🟢 Kamera Aktif (Native Stream)',
+            scanState: '🔄 Scanner sedang mencari QR Code...',
+            errorMsg: ''
+          });
+          if (resEl) {
+            resEl.className = "text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200";
+            resEl.textContent = "✅ Kamera Perangkat Aktif! Arahkan Kartu QR ke layar.";
+          }
+          return;
+        } catch (err) {
+          console.error("Native camera fallback error:", err);
+          window.updateScannerDiagnostics({
+            camState: '🔴 Kamera Gagal Dibuka',
+            scanState: 'Berhenti',
+            errorMsg: `Error Kamera: ${err.message || err}`
+          });
+        }
+      }
+
+      if (resEl) {
+        resEl.className = "text-xs font-bold text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200";
+        resEl.innerHTML = `⚠️ Akses video langsung dibatasi oleh browser/iframe. Gunakan tombol <b>"📸 Ambil Foto / Scan Gambar QR"</b> di bawah.`;
+      }
+    };
+
+    window.handleQrImageFileScan = async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const resEl = document.getElementById('qr-scan-result');
+      window.updateScannerDiagnostics({
+        scanState: '⏳ Memindai file gambar QR Code...',
+        errorMsg: ''
+      });
+      if (resEl) {
+        resEl.className = "text-xs font-bold text-blue-700 bg-blue-50 p-2.5 rounded-xl border border-blue-200";
+        resEl.textContent = "⏳ Memindai gambar QR Code...";
+      }
+
+      // 1. Coba decode menggunakan jsQR melalui Canvas Image terlebih dahulu (tidak mematikan kamera yang sedang aktif)
+      if (typeof jsQR !== 'undefined') {
+        try {
+          const decodedFromImg = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const img = new Image();
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'attemptBoth' });
+                resolve(code ? code.data : null);
+              };
+              img.onerror = () => resolve(null);
+              img.src = e.target.result;
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+
+          if (decodedFromImg) {
+            await window.processDetectedQrCode(decodedFromImg, 'Foto Kamera QR');
+            return;
+          }
+        } catch {}
+      }
+
+      // 2. Fallback menggunakan Html5Qrcode scanFile
+      try {
+        if (typeof Html5Qrcode !== 'undefined') {
+          if (html5QrScanner && html5QrScanner.isScanning) {
+            try { await html5QrScanner.stop(); } catch {}
+          }
+          const fileScanner = new Html5Qrcode("qr-reader-box");
+          const decodedText = await fileScanner.scanFile(file, true);
+          await window.processDetectedQrCode(decodedText, 'Foto Kamera QR');
+          return;
+        }
+      } catch (err) {
+        window.updateScannerDiagnostics({
+          scanState: '❌ Gagal membaca QR dari gambar',
+          errorMsg: err?.message || String(err)
+        });
+        if (resEl) {
+          resEl.className = "text-xs font-bold text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200";
+          resEl.textContent = "❌ QR Code tidak terbaca jelas pada foto. Pastikan gambar terang & fokus, atau pilih siswa di bawah.";
+        }
+      }
+    };
+
+    window.openCameraScannerModal = async () => {
+      const modal = document.getElementById('modal-camera-scanner');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      state.isCameraScanning = true;
+
+      try {
+        if (window.parent && window.parent !== window) {
+          const iframes = window.parent.document.getElementsByTagName('iframe');
+          for (let f of iframes) {
+            if (!f.getAttribute('allow')?.includes('camera')) {
+              const cur = f.getAttribute('allow') || '';
+              f.setAttribute('allow', cur + '; camera; microphone');
+            }
+          }
+        }
+      } catch {}
+
+      setTimeout(() => {
+        window.startCameraWithConfig();
+      }, 250);
+    };
+
+    function renderJournalView() {
+      const isSiswa = state.currentUser.role === 'Siswa';
+      const filterClass = state.filterJournalClass;
+
+      const list = state.journals.filter(j => {
+        const mStudent = isSiswa ? j.studentId === state.currentUser.id : true;
+        const mClass = filterClass === 'Semua' ? true : j.classId === filterClass;
+        return mStudent && mClass;
+      });
+
+      const items = list.length === 0
+        ? `<div class="col-span-full bg-white p-8 rounded-3xl border text-center text-xs text-slate-400 font-bold">Belum ada catatan jurnal karakter sesuai filter.</div>`
+        : list.map(j => {
+            let attachmentBadgeHtml = '';
+            if (j.attachmentUrl) {
+              const isPdf = j.attachmentType === 'application/pdf' || (j.attachmentName && j.attachmentName.toLowerCase().endsWith('.pdf'));
+              if (isPdf) {
+                attachmentBadgeHtml = `
+                  <a href="${j.attachmentUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold border border-rose-200 transition-all cursor-pointer">
+                    📄 <span>${j.attachmentName || 'Dokumen PDF'}</span> (Buka/Unduh)
+                  </a>
+                `;
+              } else {
+                attachmentBadgeHtml = `
+                  <div class="space-y-1">
+                    <span class="text-[10px] font-bold text-slate-500 block">Lampiran Bukti Kegiatan:</span>
+                    <a href="${j.attachmentUrl}" target="_blank" class="block w-28 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-2xs hover:opacity-90 transition-all">
+                      <img src="${j.attachmentUrl}" alt="Bukti Kegiatan" class="w-full h-full object-cover" />
+                    </a>
+                  </div>
+                `;
+              }
+            }
+
+            return `
+              <div class="bg-white rounded-3xl border border-slate-200 p-5 space-y-3 flex flex-col justify-between">
+                <div class="space-y-3">
+                  <div class="flex justify-between items-center text-[11px]">
+                    <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">${j.category}</span>
+                    <span class="text-slate-400 font-mono">${j.date}</span>
+                  </div>
+                  <h4 class="font-black text-sm text-slate-900">${j.title}</h4>
+                  <p class="text-xs text-slate-600 leading-relaxed">${j.description}</p>
+                  ${attachmentBadgeHtml}
+                </div>
+                <div class="pt-3 border-t flex items-center justify-between text-xs">
+                  <span class="font-bold text-slate-800">${j.studentName} (${j.classId})</span>
+                  <button type="button" onclick="window.deleteJournal('${j.firestoreDocId || j.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs">
+                    🗑️ Hapus
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="font-black text-sm mr-2">Jurnal 7 Kebiasaan Anak Indonesia Hebat</h3>
+              ${!isSiswa ? `
+                <select onchange="window.updateJournalClassFilter(this.value)" class="p-2 border rounded-xl text-xs font-bold">
+                  <option value="Semua" ${filterClass === 'Semua' ? 'selected' : ''}>Semua Kelas (${state.journals.length})</option>
+                  ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${filterClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+              ` : ''}
+            </div>
+            <button onclick="window.openAddJournalModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">+ Catat Jurnal</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${items}</div>
+
+          <div id="modal-delete-journal" class="${state.pendingDeleteJournalId ? 'flex' : 'hidden'} fixed inset-0 bg-black/60 z-[99999] items-center justify-center p-4">
+            <div class="bg-white max-w-sm w-full rounded-3xl p-6 space-y-4 text-center shadow-2xl border border-slate-200">
+              <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto">🗑️</div>
+              <div class="space-y-1">
+                <h3 class="font-black text-base text-slate-900">Hapus Jurnal Ini?</h3>
+                <p class="text-xs text-slate-500">Data isian jurnal akan dihapus dari tampilan aplikasi.</p>
+              </div>
+              <div class="flex gap-2 justify-center pt-2">
+                <button type="button" onclick="window.cancelDeleteJournal()" class="flex-1 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-xl font-bold text-xs text-slate-700 cursor-pointer">Batal</button>
+                <button type="button" id="btn-confirm-delete-journal" onclick="window.confirmDeleteJournalNow()" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-md">Ya, Hapus</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="modal-add-journal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-lg w-full rounded-3xl p-6 space-y-4 max-h-[92vh] overflow-y-auto">
+              <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-base text-slate-900">Tambah Jurnal Karakter & Bukti</h3>
+                <button onclick="document.getElementById('modal-add-journal').classList.add('hidden')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold cursor-pointer">Batal</button>
+              </div>
+
+              <form onsubmit="window.saveJournal(event)" class="space-y-3.5 text-xs">
+                ${!isSiswa ? `
+                  <div>
+                    <label class="font-bold block mb-1">Pilih Murid *</label>
+                    <select id="jr-student" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50">
+                      ${state.students.map(s => `<option value="${s.id}">${s.name} (${s.classId})</option>`).join('')}
+                    </select>
+                  </div>
+                ` : ''}
+                <div>
+                  <label class="font-bold block mb-1">Kategori 7 Kebiasaan *</label>
+                  <select id="jr-category" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50">
+                    ${ACTIVITY_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Judul Kegiatan *</label>
+                  <input type="text" id="jr-title" required placeholder="Contoh: Salat Subuh Berjamaah di Masjid" class="w-full p-2.5 border rounded-xl" />
+                </div>
+                <div>
+                  <label class="font-bold block mb-1">Deskripsi Kegiatan *</label>
+                  <textarea id="jr-desc" rows="3" required placeholder="Ceritakan detail kegiatan positif anak..." class="w-full p-2.5 border rounded-xl"></textarea>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div>
+                    <label class="font-black text-slate-800 block">Lampiran Bukti Kegiatan (Opsional)</label>
+                    <span class="text-[11px] text-slate-500">Unggah foto (JPG, PNG, WEBP) atau dokumen PDF sebagai bukti kegiatan siswa. Maksimal ukuran 5 MB.</span>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-2xs inline-flex items-center gap-1.5">
+                      📁 Pilih File / Ambil Foto
+                      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" onchange="window.handleJournalFileSelected(event)" class="hidden" />
+                    </label>
+                    <span id="journal-file-name-label" class="text-slate-500 italic text-[11px]">Belum ada file dipilih</span>
+                  </div>
+
+                  <div id="journal-attachment-preview" class="hidden pt-2"></div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t">
+                  <button type="button" onclick="document.getElementById('modal-add-journal').classList.add('hidden')" class="px-4 py-2 border rounded-xl font-bold cursor-pointer">Batal</button>
+                  <button type="submit" id="btn-save-journal" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold cursor-pointer shadow-xs">Simpan Jurnal & Lampiran</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateJournalClassFilter = (v) => { state.filterJournalClass = v; renderApp(); };
+
+    window.openAddJournalModal = () => {
+      state.tempAttachment = null;
+      document.getElementById('modal-add-journal').classList.remove('hidden');
+      const nameLbl = document.getElementById('journal-file-name-label');
+      if (nameLbl) nameLbl.textContent = 'Belum ada file dipilih';
+      const prevBox = document.getElementById('journal-attachment-preview');
+      if (prevBox) {
+        prevBox.innerHTML = '';
+        prevBox.classList.add('hidden');
+      }
+      const titleInp = document.getElementById('jr-title');
+      if (titleInp) titleInp.value = '';
+      const descInp = document.getElementById('jr-desc');
+      if (descInp) descInp.value = '';
+    };
+
+    window.handleJournalFileSelected = (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const maxBytes = 5 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        showToast('Ukuran file melebihi batas maksimal 5 MB!', 'error');
+        event.target.value = '';
+        return;
+      }
+
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      if (!validTypes.includes(file.type)) {
+        showToast('Format file tidak didukung! Gunakan JPG, PNG, WEBP, atau PDF.', 'error');
+        event.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64Data = uploadEvent.target.result.split(',')[1];
+        state.tempAttachment = {
+          file,
+          base64Data,
+          type: file.type,
+          name: file.name,
+          size: file.size,
+          previewUrl: URL.createObjectURL(file)
+        };
+
+        const nameLbl = document.getElementById('journal-file-name-label');
+        if (nameLbl) nameLbl.textContent = file.name;
+
+        const prevBox = document.getElementById('journal-attachment-preview');
+        if (prevBox) {
+          prevBox.classList.remove('hidden');
+          const isPdf = file.type === 'application/pdf';
+          if (isPdf) {
+            prevBox.innerHTML = `
+              <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                <div class="flex items-center gap-2 overflow-hidden">
+                  <span class="text-xl">📄</span>
+                  <div class="overflow-hidden">
+                    <div class="font-bold text-slate-800 truncate">${file.name}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">${(file.size / 1024).toFixed(1)} KB (PDF)</div>
+                  </div>
+                </div>
+                <button type="button" onclick="window.removeTempJournalAttachment()" class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold text-[11px] cursor-pointer">Hapus</button>
+              </div>
+            `;
+          } else {
+            prevBox.innerHTML = `
+              <div class="space-y-2">
+                <span class="text-[10px] font-bold text-slate-500 block">Pratinjau Bukti:</span>
+                <div class="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-slate-100 flex items-center justify-center">
+                  <img src="${state.tempAttachment.previewUrl}" alt="Pratinjau" class="w-full h-full object-cover" />
+                  <button type="button" onclick="window.removeTempJournalAttachment()" class="absolute top-1 right-1 px-2 py-0.5 bg-rose-600 text-white rounded-md font-bold text-[10px] shadow cursor-pointer">X</button>
+                </div>
+              </div>
+            `;
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.removeTempJournalAttachment = () => {
+      state.tempAttachment = null;
+      const nameLbl = document.getElementById('journal-file-name-label');
+      if (nameLbl) nameLbl.textContent = 'Belum ada file dipilih';
+      const prevBox = document.getElementById('journal-attachment-preview');
+      if (prevBox) {
+        prevBox.innerHTML = '';
+        prevBox.classList.add('hidden');
+      }
+    };
+
+    window.saveJournal = async (e) => {
+      e.preventDefault();
+      const isSiswa = state.currentUser.role === 'Siswa';
+      const stId = isSiswa ? state.currentUser.id : document.getElementById('jr-student')?.value;
+      const st = state.students.find(s => s.id === stId) || { id: stId, name: state.currentUser.name, classId: state.currentUser.classId || 'Kelas 1' };
+      const id = 'JRN_' + Date.now();
+
+      let attachmentUrl = '';
+      let attachmentPath = '';
+      let attachmentName = '';
+      let attachmentType = '';
+      let attachmentSize = 0;
+
+      const saveBtn = document.getElementById('btn-save-journal');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '⏳ Mengunggah ke Google Drive & Menyimpan...';
+      }
+
+      try {
+        if (state.tempAttachment) {
+          attachmentName = state.tempAttachment.name;
+          attachmentType = state.tempAttachment.type;
+          attachmentSize = state.tempAttachment.size;
+
+          if (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' && GOOGLE_APPS_SCRIPT_URL && !GOOGLE_APPS_SCRIPT_URL.includes('AKfycbz...')) {
+            const payload = {
+              file: state.tempAttachment.base64Data,
+              filename: attachmentName,
+              mimetype: attachmentType,
+              studentId: st.id
+            };
+
+            const resp = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+              method: 'POST',
+              body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            if (result.status === 'success') {
+              attachmentUrl = result.fileUrl;
+              attachmentPath = result.fileId;
+            } else {
+              throw new Error(result.message || 'Gagal upload ke Google Drive');
+            }
+          } else {
+            attachmentUrl = state.tempAttachment.previewUrl;
+            attachmentPath = 'mock_drive_id_' + Date.now();
+          }
+        }
+
+        const entry = {
+          id,
+          studentId: st.id,
+          studentName: st.name,
+          classId: st.classId,
+          category: document.getElementById('jr-category').value,
+          title: document.getElementById('jr-title').value.trim(),
+          description: document.getElementById('jr-desc').value.trim(),
+          date: state.todayStr,
+          recordedBy: state.currentUser.name,
+          attachmentUrl,
+          attachmentPath,
+          attachmentName,
+          attachmentType,
+          attachmentSize
+        };
+
+        if (IS_PREVIEW) {
+          state.journals.unshift(entry);
+        } else if (db) {
+          await setDoc(doc(db, 'journals', id), entry);
+        }
+
+        document.getElementById('modal-add-journal').classList.add('hidden');
+        showToast('Jurnal karakter & lampiran berhasil disimpan!');
+        renderApp();
+      } catch (err) {
+        console.error("Gagal menyimpan jurnal:", err);
+        showToast('Gagal mengunggah lampiran ke Google Drive. Periksa URL Apps Script Anda.', 'error');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Simpan Jurnal & Lampiran';
+        }
+      }
+    };
+
+    window.deleteJournal = (id) => {
+      if (!id) return;
+      state.pendingDeleteJournalId = String(id);
+      renderApp();
+    };
+
+    window.cancelDeleteJournal = () => {
+      state.pendingDeleteJournalId = null;
+      renderApp();
+    };
+
+    window.confirmDeleteJournalNow = async () => {
+      const targetId = state.pendingDeleteJournalId;
+      if (!targetId) return;
+
+      state.deletedJournalIds.add(targetId);
+      const targetItem = state.journals.find(j => String(j.id) === String(targetId) || String(j.firestoreDocId) === String(targetId));
+      if (targetItem) {
+        if (targetItem.id) state.deletedJournalIds.add(String(targetItem.id));
+        if (targetItem.firestoreDocId) state.deletedJournalIds.add(String(targetItem.firestoreDocId));
+      }
+
+      state.journals = state.journals.filter(
+        j => String(j.id) !== String(targetId) && String(j.firestoreDocId) !== String(targetId)
+      );
+      state.pendingDeleteJournalId = null;
+      renderApp();
+
+      if (!IS_PREVIEW && db) {
+        try {
+          const docIdToDelete = targetItem?.firestoreDocId || targetId;
+          await deleteDoc(doc(db, 'journals', String(docIdToDelete)));
+        } catch (err) {
+          console.warn("Firestore delete info:", err);
+        }
+      }
+      showToast('Jurnal berhasil dihapus dari tampilan!');
+    };
+
+    function renderCredentialsView() {
+      const roleFilter = state.filterCredRole;
+      const classFilter = state.filterCredClass;
+      const search = state.filterCredSearch.toLowerCase();
+
+      let combined = [];
+      if (roleFilter === 'Semua' || roleFilter === 'Guru') {
+        state.teachers.forEach(t => {
+          const mClass = classFilter === 'Semua' || t.classAssignment === classFilter;
+          const mSearch = t.name.toLowerCase().includes(search) || (t.nip && t.nip.includes(search));
+          if (mClass && mSearch) {
+            combined.push({
+              name: t.name,
+              roleBadge: 'Guru',
+              classInfo: t.classAssignment || 'Semua Kelas',
+              username: t.nip,
+              password: t.password || '123456'
+            });
+          }
+        });
+      }
+      if (roleFilter === 'Semua' || roleFilter === 'Siswa') {
+        state.students.forEach(s => {
+          const mClass = classFilter === 'Semua' || s.classId === classFilter;
+          const mSearch = s.name.toLowerCase().includes(search) || (s.nisn && s.nisn.includes(search));
+          if (mClass && mSearch) {
+            combined.push({
+              name: s.name,
+              roleBadge: 'Siswa',
+              classInfo: s.classId || '-',
+              username: s.nisn,
+              password: s.password || '123456'
+            });
+          }
+        });
+      }
+
+      const rowsHtml = combined.length === 0
+        ? `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-bold">Tidak ada akun yang sesuai dengan filter.</td></tr>`
+        : combined.map((item, idx) => `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-3">${idx + 1}</td>
+            <td class="p-3 font-bold text-slate-900">${item.name}</td>
+            <td class="p-3">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${item.roleBadge === 'Guru' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}">
+                ${item.roleBadge}
+              </span>
+            </td>
+            <td class="p-3 font-bold">${item.classInfo}</td>
+            <td class="p-3 font-mono font-bold text-blue-700">${item.username}</td>
+            <td class="p-3 font-mono">${item.password}</td>
+          </tr>
+        `).join('');
+
+      return `
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+          <div class="flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <h3 class="font-black text-base">Daftar Akun Login Guru & Siswa</h3>
+              <p class="text-xs text-slate-500">Gunakan filter peran (Guru/Siswa) dan kelas di bawah untuk melihat akun login.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select onchange="window.updateCredRoleFilter(this.value)" class="p-2 border rounded-xl text-xs font-bold bg-slate-50">
+                <option value="Semua" ${roleFilter === 'Semua' ? 'selected' : ''}>Semua Peran (Guru & Siswa)</option>
+                <option value="Guru" ${roleFilter === 'Guru' ? 'selected' : ''}>Hanya Guru</option>
+                <option value="Siswa" ${roleFilter === 'Siswa' ? 'selected' : ''}>Hanya Siswa</option>
+              </select>
+              <select onchange="window.updateCredClassFilter(this.value)" class="p-2 border rounded-xl text-xs font-bold bg-slate-50">
+                <option value="Semua" ${classFilter === 'Semua' ? 'selected' : ''}>Semua Kelas</option>
+                ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${classFilter === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+              <input type="text" placeholder="Cari nama / NIP / NISN..." value="${state.filterCredSearch}" oninput="window.updateCredSearch(this.value)" class="p-2 border rounded-xl text-xs w-44" />
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border border-slate-200">
+              <thead class="bg-slate-100 font-bold text-slate-700">
+                <tr><th class="p-3">No</th><th class="p-3">Nama Lengkap</th><th class="p-3">Peran</th><th class="p-3">Kelas / Tugas</th><th class="p-3">Username Login (NIP/NISN)</th><th class="p-3">Password</th></tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    window.updateCredRoleFilter = (v) => { state.filterCredRole = v; renderApp(); };
+    window.updateCredClassFilter = (v) => { state.filterCredClass = v; renderApp(); };
+    window.updateCredSearch = (v) => { state.filterCredSearch = v; renderApp(); };
+
+    function renderIdentityView() {
+      return `
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 max-w-2xl mx-auto space-y-6">
+          <div class="flex items-center gap-4 border-b pb-4">
+            <div class="shrink-0">${renderSchoolLogoHtml("w-16 h-16", "text-base")}</div>
+            <div>
+              <h3 class="font-black text-base text-slate-900">Pengaturan Identitas & Logo Sekolah</h3>
+              <p class="text-xs text-slate-500">Logo dan identitas ini akan tampil pada Header, Kartu Pelajar, dan Kop Laporan Cetak.</p>
+            </div>
+          </div>
+
+          <form onsubmit="window.saveIdentity(event)" class="space-y-4 text-xs">
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <label class="font-bold block text-slate-700">Unggah Logo Sekolah (PNG / JPG / SVG)</label>
+              <div class="flex flex-wrap items-center gap-3">
+                <input type="file" accept="image/*" onchange="window.handleLogoUpload(event)" class="block text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer" />
+                ${state.schoolInfo.logo ? `<button type="button" onclick="window.removeSchoolLogo()" class="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-bold cursor-pointer">Hapus Logo</button>` : ''}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="font-bold block mb-1">Nama Sekolah *</label><input type="text" id="id-name" required value="${state.schoolInfo.name || ''}" class="w-full p-2.5 border rounded-xl font-bold" /></div>
+              <div><label class="font-bold block mb-1">NPSN *</label><input type="text" id="id-npsn" required value="${state.schoolInfo.npsn || ''}" class="w-full p-2.5 border rounded-xl font-mono font-bold" /></div>
+            </div>
+            <div><label class="font-bold block mb-1">Alamat Lengkap *</label><input type="text" id="id-address" required value="${state.schoolInfo.address || ''}" class="w-full p-2.5 border rounded-xl" /></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="font-bold block mb-1">Kepala Sekolah *</label><input type="text" id="id-principal" required value="${state.schoolInfo.principal || ''}" class="w-full p-2.5 border rounded-xl font-bold" /></div>
+              <div><label class="font-bold block mb-1">NIP Kepala Sekolah *</label><input type="text" id="id-nip" required value="${state.schoolInfo.principalNip || ''}" class="w-full p-2.5 border rounded-xl font-mono" /></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="font-bold block mb-1">Tahun Ajaran</label><input type="text" id="id-year" value="${state.schoolInfo.academicYear || '2026/2027'}" class="w-full p-2.5 border rounded-xl font-bold" /></div>
+              <div>
+                <label class="font-bold block mb-1">Semester Aktif</label>
+                <select id="id-semester" class="w-full p-2.5 border rounded-xl font-bold">
+                  <option value="Ganjil" ${state.schoolInfo.semester === 'Ganjil' ? 'selected' : ''}>Ganjil</option>
+                  <option value="Genap" ${state.schoolInfo.semester === 'Genap' ? 'selected' : ''}>Genap</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer shadow-md">Simpan Identitas & Logo Sekolah</button>
+          </form>
+        </div>
+      `;
+    }
+
+    window.handleLogoUpload = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 200;
+          let w = img.width;
+          let h = img.height;
+          if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/png', 0.85);
+          state.schoolInfo.logo = dataUrl;
+          showToast('Logo berhasil dimuat! Klik "Simpan Identitas" untuk menyimpan.');
+          renderApp();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.removeSchoolLogo = () => {
+      state.schoolInfo.logo = '';
+      showToast('Logo dihapus. Klik Simpan untuk menerapkan.');
+      renderApp();
+    };
+
+    window.saveIdentity = async (e) => {
+      e.preventDefault();
+      const updated = {
+        ...state.schoolInfo,
+        name: document.getElementById('id-name').value.trim(),
+        npsn: document.getElementById('id-npsn').value.trim(),
+        address: document.getElementById('id-address').value.trim(),
+        principal: document.getElementById('id-principal').value.trim(),
+        principalNip: document.getElementById('id-nip').value.trim(),
+        academicYear: document.getElementById('id-year').value.trim(),
+        semester: document.getElementById('id-semester').value
+      };
+      if (IS_PREVIEW) {
+        state.schoolInfo = updated;
+      } else if (db) {
+        await setDoc(doc(db, 'settings', 'school_info'), updated);
+      }
+      showToast('Identitas & Logo sekolah berhasil disimpan!');
+      renderApp();
+    };
+
+    function renderApp() {
+      const root = document.getElementById('root-view');
+      if (!state.currentUser) {
+        root.innerHTML = renderLogin();
+        const form = document.getElementById('login-form');
+        if (form) form.addEventListener('submit', handleLoginSubmit);
+        return;
+      }
+
+      const menus = getMenus();
+      let activeContent = '';
+      switch (state.activeTab) {
+        case 'dashboard': activeContent = renderDashboardView(); break;
+        case 'students': activeContent = renderStudentsView(); break;
+        case 'teachers': activeContent = renderTeachersView(); break;
+        case 'classes': activeContent = renderClassesView(); break;
+        case 'attendance': activeContent = renderAttendanceView(); break;
+        case 'recap': activeContent = renderRecapView(); break;
+        case 'cards': activeContent = renderCardsView(false); break;
+        case 'my_card': activeContent = renderCardsView(true); break;
+        case 'journal': activeContent = renderJournalView(); break;
+        case 'credentials': activeContent = renderCredentialsView(); break;
+        case 'school_identity': activeContent = renderIdentityView(); break;
+        default: activeContent = renderDashboardView();
+      }
+
+      root.innerHTML = `
+        <div class="min-h-screen flex flex-col md:flex-row">
+          <aside class="desktop-sidebar fixed top-0 left-0 h-screen w-64 bg-slate-900 text-white flex-col justify-between z-40">
+            <div>
+              <div class="p-4 border-b border-slate-800 flex items-center gap-3">
+                <div class="shrink-0">${renderSchoolLogoHtml("w-10 h-10", "text-xs")}</div>
+                <div class="overflow-hidden">
+                  <div class="font-black text-xs truncate">${state.schoolInfo.name || 'SDN Gedongboyountung'}</div>
+                  <div class="text-[10px] text-blue-400 font-bold">${IS_PREVIEW ? 'Mode Preview' : 'Mode Produksi'}</div>
+                </div>
+              </div>
+              <nav class="p-3 space-y-1 text-xs overflow-y-auto max-h-[calc(100vh-160px)]">
+                ${menus.map(m => `
+                  <button onclick="window.switchTab('${m.id}')" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${state.activeTab === m.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">
+                    <span>${m.icon}</span><span>${m.label}</span>
+                  </button>
+                `).join('')}
+              </nav>
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-slate-950 text-xs space-y-2">
+              <div class="font-bold truncate">${state.currentUser.name}</div>
+              <div class="text-[10px] text-emerald-400 font-bold uppercase">${state.currentUser.role}</div>
+              <button onclick="window.handleLogout()" class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold cursor-pointer">Keluar</button>
+            </div>
+          </aside>
+
+          <div class="main-content-area flex-1 flex flex-col min-h-screen">
+            <header class="sticky top-0 z-30 glass-card px-4 py-3 flex items-center justify-between no-print">
+              <div class="font-black text-slate-800 text-sm sm:text-base">
+                ${menus.find(m => m.id === state.activeTab)?.label || 'Dashboard'}
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="px-3 py-1 bg-slate-100 rounded-full font-bold text-slate-600">${state.todayStr}</span>
+                <button onclick="window.handleLogout()" class="md:hidden px-3 py-1 bg-rose-600 text-white rounded-full font-bold">Keluar</button>
+              </div>
+            </header>
+            <main class="p-4 md:p-6 max-w-7xl w-full mx-auto flex-1">
+              ${activeContent}
+            </main>
+          </div>
+
+          <nav class="mobile-bottom-nav fixed bottom-3 left-3 right-3 glass-card rounded-2xl shadow-2xl p-1.5 justify-around items-center z-50 border border-slate-200 overflow-x-auto">
+            ${menus.map(m => `
+              <button onclick="window.switchTab('${m.id}')" class="flex flex-col items-center py-1.5 px-2 rounded-xl text-[10px] font-bold shrink-0 ${state.activeTab === m.id ? 'bg-blue-600 text-white' : 'text-slate-600'}">
+                <span class="text-sm">${m.icon}</span>
+                <span class="truncate max-w-[56px]">${m.label}</span>
+              </button>
+            `).join('')}
+          </nav>
+
+          <div id="modal-camera-scanner" class="hidden fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center p-4 no-print">
+            <div class="bg-white max-w-md w-full rounded-3xl p-5 sm:p-6 space-y-3.5 text-center max-h-[92vh] overflow-y-auto">
+              <div class="flex justify-between items-center">
+                <h3 class="font-black text-base text-slate-900">📷 Pemindai Kamera QR Pelajar</h3>
+                <button onclick="window.stopCameraScanner()" class="px-3 py-1 bg-rose-100 text-rose-700 rounded-xl text-xs font-bold cursor-pointer">Tutup</button>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <select id="camera-device-select" onchange="window.startCameraWithConfig(this.value)" class="hidden flex-1 p-2 border border-slate-300 rounded-xl text-xs font-bold bg-slate-50 text-slate-800"></select>
+                <button type="button" onclick="window.startCameraWithConfig()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer">🔄 Muat Ulang Kamera</button>
+              </div>
+
+              <div id="qr-reader-box" class="w-full min-h-[220px] bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center text-white text-xs"></div>
+
+              <!-- Panel Diagnostik Visual Real-Time -->
+              <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-left space-y-1 text-[11px]">
+                <div class="font-black text-slate-700 uppercase tracking-wider text-[10px]">📊 Diagnostik Scanner Real-Time</div>
+                <div class="flex justify-between gap-2"><span class="text-slate-500">Status Kamera:</span><span id="diag-cam-status" class="font-bold text-emerald-700">Menyiapkan...</span></div>
+                <div class="flex justify-between gap-2"><span class="text-slate-500">Status Scanner:</span><span id="diag-scan-status" class="font-bold text-blue-700">Menunggu kamera...</span></div>
+                <div class="flex justify-between gap-2"><span class="text-slate-500">Hasil QR Terbaca:</span><span id="diag-raw-result" class="font-mono font-bold text-slate-900">-</span></div>
+                <div id="diag-error-msg" class="hidden text-rose-600 font-bold pt-1 border-t border-rose-200"></div>
+              </div>
+
+              <div id="qr-scan-result" class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                Arahkan Kartu QR Pelajar ke kamera...
+              </div>
+
+              <div class="p-3 bg-blue-50 border border-blue-200 rounded-2xl space-y-2 text-left">
+                <label class="text-[11px] font-bold text-blue-900 block">📸 Kamera HP / Ambil Foto Kartu QR (Alternatif Anti-Gagal):</label>
+                <input type="file" accept="image/*" capture="environment" onchange="window.handleQrImageFileScan(event)" class="block w-full text-xs text-slate-700 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer" />
+              </div>
+
+              <div class="pt-2 border-t text-left space-y-2">
+                <label class="text-[11px] font-bold text-slate-600 block">Atau Pilih / Ketik NISN Siswa Secara Langsung:</label>
+                <div class="flex gap-2">
+                  <select onchange="if(this.value) { document.getElementById('modal-manual-nisn').value = this.value; }" class="w-1/2 p-2 border rounded-xl text-xs font-bold bg-slate-50">
+                    <option value="">-- Pilih Siswa --</option>
+                    ${state.students.map(s => `<option value="${s.nisn}">${s.name} (${s.classId})</option>`).join('')}
+                  </select>
+                  <input type="text" id="modal-manual-nisn" placeholder="NISN..." class="w-1/2 p-2 border rounded-xl text-xs font-mono font-bold" />
+                </div>
+                <button onclick="window.recordAttendance(document.getElementById('modal-manual-nisn').value, 'Hadir', 'Scan Manual')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">✅ Catat Hadir Sekarang</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    renderApp();
+  </script>
+</body>
+</html>
