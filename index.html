@@ -2798,7 +2798,9 @@
       const teacherNameForClass = assignedClassObj?.teacher || (effClass !== 'Semua' ? (state.teachers.find(t => t.classAssignment === effClass)?.name || '-') : state.currentUser.name);
       const teacherObjForClass = state.teachers.find(t => t.name === teacherNameForClass);
       const teacherNipForClass = teacherObjForClass?.nip || '-';
-      const teacherRoleTitle = effClass !== 'Semua' ? `Wali Kelas ${effClass}` : 'Guru / Petugas';
+      const teacherRoleTitle = effClass !== 'Semua'
+        ? (String(effClass).toLowerCase().startsWith('kelas') ? `Wali ${effClass}` : `Wali Kelas ${effClass}`)
+        : 'Guru / Petugas';
 
       const parts = (state.filterRecapMonthYear || '2026-10').split('-');
       const year = parseInt(parts[0], 10) || 2026;
@@ -2807,6 +2809,12 @@
 
       const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
       const monthNameStr = monthNames[month] || 'Oktober';
+
+      // Format tanggal tanda tangan menjadi Hari-Bulan-Tahun (contoh: 11 November 2026)
+      const todayParts = String(state.todayStr || '').split('-');
+      const formattedSignatureDate = todayParts.length === 3
+        ? `${parseInt(todayParts[2], 10)} ${monthNames[parseInt(todayParts[1], 10)] || todayParts[1]} ${todayParts[0]}`
+        : state.todayStr;
 
       let printContainerContent = '';
 
@@ -2911,7 +2919,7 @@
               <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
             </div>
             <div style="width: 220px;">
-              <p class="mb-12">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
+              <p class="mb-12">Lamongan, ${formattedSignatureDate}<br/>${teacherRoleTitle}</p>
               <p class="underline font-bold">${teacherNameForClass}</p>
               <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
             </div>
@@ -2974,7 +2982,7 @@
               <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
             </div>
             <div style="width: 220px;">
-              <p class="mb-14">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
+              <p class="mb-14">Lamongan, ${formattedSignatureDate}<br/>${teacherRoleTitle}</p>
               <p class="underline font-bold">${teacherNameForClass}</p>
               <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
             </div>
