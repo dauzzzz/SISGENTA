@@ -358,6 +358,8 @@
       filterCredSearch: '',
       filterJournalClass: 'Semua',
       filterJournalDate: '',
+      selectedJournalIds: [],
+      pendingBulkDeleteJournalIds: [],
       pendingDeleteJournalId: null,
       deletedJournalIds: new Set(),
       isCameraScanning: false,
@@ -3691,9 +3693,15 @@
         return mStudent && mClass && mDate;
       });
 
+      const visibleIds = list.map(j => String(j.firestoreDocId || j.id));
+      const selectedVisibleCount = visibleIds.filter(id => state.selectedJournalIds.includes(id)).length;
+      const isAllVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+
       const items = list.length === 0
         ? `<div class="col-span-full bg-white p-8 rounded-3xl border text-center text-xs text-slate-400 font-bold">Belum ada catatan jurnal karakter sesuai filter${filterDate ? ` pada tanggal ${filterDate}` : ''}.</div>`
         : list.map(j => {
+            const docKey = String(j.firestoreDocId || j.id);
+            const isSelected = state.selectedJournalIds.includes(docKey);
             let attachmentBadgeHtml = '';
             if (j.attachmentUrl) {
               const isPdf = j.attachmentType === 'application/pdf' || (j.attachmentName && j.attachmentName.toLowerCase().endsWith('.pdf'));
@@ -3716,10 +3724,13 @@
             }
 
             return `
-              <div class="bg-white rounded-3xl border border-slate-200 p-5 space-y-3 flex flex-col justify-between">
+              <div class="bg-white rounded-3xl border ${isSelected ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/10' : 'border-slate-200'} p-5 space-y-3 flex flex-col justify-between transition-all">
                 <div class="space-y-3">
                   <div class="flex justify-between items-center text-[11px]">
-                    <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">${j.category}</span>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                      <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.toggleSelectJournal('${docKey}', this.checked)" class="w-4 h-4 accent-rose-600 rounded cursor-pointer" />
+                      <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">${j.category}</span>
+                    </label>
                     <span class="text-slate-400 font-mono">${j.date}</span>
                   </div>
                   <h4 class="font-black text-sm text-slate-900">${j.title}</h4>
@@ -3728,7 +3739,7 @@
                 </div>
                 <div class="pt-3 border-t flex items-center justify-between text-xs">
                   <span class="font-bold text-slate-800">${j.studentName} (${j.classId})</span>
-                  <button type="button" onclick="window.deleteJournal('${j.firestoreDocId || j.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs">
+                  <button type="button" onclick="window.deleteJournal('${docKey}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs">
                     🗑️ Hapus
                   </button>
                 </div>
@@ -3757,16 +3768,38 @@
               </div>
               <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[11px] font-bold border border-blue-200">${list.length} Jurnal</span>
             </div>
-            <button onclick="window.openAddJournalModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">+ Catat Jurnal</button>
+
+            <div class="flex flex-wrap items-center gap-2">
+              ${list.length > 0 ? `
+                <label class="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer select-none border border-slate-200">
+                  <input type="checkbox" ${isAllVisibleSelected ? 'checked' : ''} onchange="window.toggleSelectAllJournals(this.checked)" class="w-4 h-4 accent-rose-600 rounded cursor-pointer" />
+                  <span>Pilih Semua (${list.length})</span>
+                </label>
+              ` : ''}
+              ${state.selectedJournalIds.length > 0 ? `
+                <button type="button" onclick="window.openBulkDeleteJournalModal()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs flex items-center gap-1.5">
+                  🗑️ Hapus Terpilih (${state.selectedJournalIds.length})
+                </button>
+              ` : ''}
+              <button onclick="window.openAddJournalModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">+ Catat Jurnal</button>
+            </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${items}</div>
 
-          <div id="modal-delete-journal" class="${state.pendingDeleteJournalId ? 'flex' : 'hidden'} fixed inset-0 bg-black/60 z-[99999] items-center justify-center p-4">
+          <div id="modal-delete-journal" class="${(state.pendingDeleteJournalId || (state.pendingBulkDeleteJournalIds && state.pendingBulkDeleteJournalIds.length > 0)) ? 'flex' : 'hidden'} fixed inset-0 bg-black/60 z-[99999] items-center justify-center p-4">
             <div class="bg-white max-w-sm w-full rounded-3xl p-6 space-y-4 text-center shadow-2xl border border-slate-200">
               <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto">🗑️</div>
               <div class="space-y-1">
-                <h3 class="font-black text-base text-slate-900">Hapus Jurnal Ini?</h3>
-                <p class="text-xs text-slate-500">Data isian jurnal akan dihapus dari tampilan aplikasi.</p>
+                <h3 class="font-black text-base text-slate-900">
+                  ${state.pendingBulkDeleteJournalIds && state.pendingBulkDeleteJournalIds.length > 0
+                    ? `Hapus ${state.pendingBulkDeleteJournalIds.length} Jurnal Sekaligus?`
+                    : 'Hapus Jurnal Ini?'}
+                </h3>
+                <p class="text-xs text-slate-500">
+                  ${state.pendingBulkDeleteJournalIds && state.pendingBulkDeleteJournalIds.length > 0
+                    ? `Sebanyak ${state.pendingBulkDeleteJournalIds.length} catatan jurnal yang dipilih akan dihapus secara permanen.`
+                    : 'Data isian jurnal akan dihapus dari tampilan aplikasi.'}
+                </p>
               </div>
               <div class="flex gap-2 justify-center pt-2">
                 <button type="button" onclick="window.cancelDeleteJournal()" class="flex-1 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-xl font-bold text-xs text-slate-700 cursor-pointer">Batal</button>
@@ -3845,6 +3878,45 @@
 
     window.updateJournalClassFilter = (v) => { state.filterJournalClass = v; renderApp(); };
     window.updateJournalDateFilter = (v) => { state.filterJournalDate = v || ''; renderApp(); };
+
+    window.toggleSelectJournal = (id, checked) => {
+      const target = String(id);
+      if (checked) {
+        if (!state.selectedJournalIds.includes(target)) state.selectedJournalIds.push(target);
+      } else {
+        state.selectedJournalIds = state.selectedJournalIds.filter(item => item !== target);
+      }
+      renderApp();
+    };
+
+    window.toggleSelectAllJournals = (checked) => {
+      const isSiswa = state.currentUser.role === 'Siswa';
+      const filterClass = state.filterJournalClass;
+      const filterDate = state.filterJournalDate || '';
+      const visibleList = state.journals.filter(j => {
+        const mStudent = isSiswa ? j.studentId === state.currentUser.id : true;
+        const mClass = filterClass === 'Semua' ? true : j.classId === filterClass;
+        const mDate = !filterDate ? true : j.date === filterDate;
+        return mStudent && mClass && mDate;
+      });
+      const visibleIds = visibleList.map(j => String(j.firestoreDocId || j.id));
+
+      if (checked) {
+        const merged = new Set([...state.selectedJournalIds, ...visibleIds]);
+        state.selectedJournalIds = Array.from(merged);
+      } else {
+        const visibleSet = new Set(visibleIds);
+        state.selectedJournalIds = state.selectedJournalIds.filter(id => !visibleSet.has(id));
+      }
+      renderApp();
+    };
+
+    window.openBulkDeleteJournalModal = () => {
+      if (!state.selectedJournalIds || state.selectedJournalIds.length === 0) return;
+      state.pendingDeleteJournalId = null;
+      state.pendingBulkDeleteJournalIds = [...state.selectedJournalIds];
+      renderApp();
+    };
 
     window.openAddJournalModal = () => {
       state.tempAttachment = null;
@@ -4028,39 +4100,61 @@
 
     window.deleteJournal = (id) => {
       if (!id) return;
+      state.pendingBulkDeleteJournalIds = [];
       state.pendingDeleteJournalId = String(id);
       renderApp();
     };
 
     window.cancelDeleteJournal = () => {
       state.pendingDeleteJournalId = null;
+      state.pendingBulkDeleteJournalIds = [];
       renderApp();
     };
 
     window.confirmDeleteJournalNow = async () => {
-      const targetId = state.pendingDeleteJournalId;
-      if (!targetId) return;
+      const bulkIds = state.pendingBulkDeleteJournalIds && state.pendingBulkDeleteJournalIds.length > 0
+        ? [...state.pendingBulkDeleteJournalIds]
+        : (state.pendingDeleteJournalId ? [String(state.pendingDeleteJournalId)] : []);
 
-      state.deletedJournalIds.add(targetId);
-      const targetItem = state.journals.find(j => String(j.id) === String(targetId) || String(j.firestoreDocId) === String(targetId));
-      if (targetItem) {
-        if (targetItem.id) state.deletedJournalIds.add(String(targetItem.id));
-        if (targetItem.firestoreDocId) state.deletedJournalIds.add(String(targetItem.firestoreDocId));
+      if (bulkIds.length === 0) return;
+
+      const btn = document.getElementById('btn-confirm-delete-journal');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Menghapus...';
       }
 
+      const toDeleteSet = new Set(bulkIds.map(String));
+      const docsToDeleteInFirestore = [];
+
+      state.journals.forEach(j => {
+        const jId = String(j.id || '');
+        const fId = String(j.firestoreDocId || '');
+        if (toDeleteSet.has(jId) || toDeleteSet.has(fId)) {
+          if (jId) state.deletedJournalIds.add(jId);
+          if (fId) state.deletedJournalIds.add(fId);
+          docsToDeleteInFirestore.push(fId || jId);
+        }
+      });
+
+      bulkIds.forEach(id => state.deletedJournalIds.add(String(id)));
+
       state.journals = state.journals.filter(
-        j => String(j.id) !== String(targetId) && String(j.firestoreDocId) !== String(targetId)
+        j => !toDeleteSet.has(String(j.id)) && !toDeleteSet.has(String(j.firestoreDocId))
       );
+      state.selectedJournalIds = state.selectedJournalIds.filter(id => !toDeleteSet.has(String(id)));
       state.pendingDeleteJournalId = null;
+      state.pendingBulkDeleteJournalIds = [];
       renderApp();
 
       if (!IS_PREVIEW && db) {
-        try {
-          const docIdToDelete = targetItem?.firestoreDocId || targetId;
-          await deleteDoc(doc(db, 'journals', String(docIdToDelete)));
-        } catch (err) {}
+        for (const docId of docsToDeleteInFirestore) {
+          try {
+            await deleteDoc(doc(db, 'journals', String(docId)));
+          } catch (err) {}
+        }
       }
-      showToast('Jurnal berhasil dihapus dari tampilan!');
+      showToast(bulkIds.length > 1 ? `${bulkIds.length} jurnal berhasil dihapus sekaligus!` : 'Jurnal berhasil dihapus dari tampilan!');
     };
 
     function renderCredentialsView() {
