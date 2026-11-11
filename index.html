@@ -279,6 +279,13 @@
       tempAttachment: null,
       tempStudentPhoto: '',
       studentCameraStream: null,
+      // Pengaturan Jam Presensi (Masuk, Batas Telat, Pulang & Auto-Alpa)
+      attendanceSettings: {
+        startTime: '06:00',
+        lateThreshold: '07:00',
+        endTime: '13:00',
+        autoAlpaEnabled: true
+      },
       // Pengaturan Cetak Global per Fitur
       printSettings: {
         recap: { paper: 'F4', orientation: 'landscape' },
@@ -497,6 +504,13 @@
 
       unsubList.push(onSnapshot(doc(db, 'settings', 'school_info'), snap => {
         if (snap.exists()) { state.schoolInfo = snap.data(); renderApp(); }
+      }));
+      unsubList.push(onSnapshot(doc(db, 'settings', 'attendance_config'), snap => {
+        if (snap.exists()) {
+          state.attendanceSettings = { ...state.attendanceSettings, ...snap.data() };
+          window.checkAndRunAutoAlpa(true);
+          renderApp();
+        }
       }));
       unsubList.push(onSnapshot(collection(db, 'classes'), snap => {
         const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -2003,9 +2017,153 @@
       renderApp();
     };
 
+    window.saveAttendanceSettings = async (e) => {
+      if (e) e.preventDefault();
+      const startTime = document.getElementById('att-set-start')?.value || '06:00';
+      const lateThreshold = document.getElementById('att-set-late')?.value || '07:00';
+      const endTime = document.getElementById('att-set-end')?.value || '13:00';
+      const autoAlpaEnabled = document.getElementById('att-set-auto-alpa')?.checked ?? true;
+
+      const updated = { startTime, lateThreshold, endTime, autoAlpaEnabled };
+      state.attendanceSettings = updated;
+
+      if (!IS_PREVIEW && db) {
+        try {
+          await setDoc(doc(db, 'settings', 'attendance_config'), updated);
+        } catch (err) {}
+      }
+
+      await window.checkAndRunAutoAlpa(false);
+      showToast(`Pengaturan jam presensi disimpan (Masuk: ${startTime}, Telat: >${lateThreshold}, Pulang: ${endTime})!`);
+      renderApp();
+    };
+
+    window.checkAndRunAutoAlpa = async (silent = true) => {
+      const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
+      if (!cfg.autoAlpaEnabled) return 0;
+
+      const nowTime = new Date().toTimeString().substring(0, 5);
+      if (nowTime <= cfg.endTime) {
+        if (!silent) showToast(`Belum melewati jam pulang (${cfg.endTime}). Auto-Alpa aktif setelah pukul ${cfg.endTime}.`, 'error');
+        return 0;
+      }
+
+      let markedCount = 0;
+      for (const st of state.students) {
+        const existingRec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === state.todayStr);
+        // Jangan ubah jika sudah ada status (Hadir, Terlambat, Sakit, Izin, atau Alpa)
+        if (!existingRec) {
+          const recordId = `att_${state.todayStr}_${st.id}`;
+          const newRec = {
+            id: recordId,
+            studentId: st.id,
+            studentName: st.name,
+            nisn: st.nisn,
+            classId: st.classId,
+            date: state.todayStr,
+            status: 'Alpa',
+            time: cfg.endTime,
+            method: 'Otomatis (> Jam Pulang)'
+          };
+          markedCount++;
+          if (IS_PREVIEW) {
+            state.attendanceRecords.push(newRec);
+          } else if (db) {
+            try { await setDoc(doc(db, 'attendance', recordId), newRec); } catch {}
+          }
+        }
+      }
+
+      if (markedCount > 0 && !silent) {
+        showToast(`${markedCount} siswa yang belum presensi otomatis ditandai Alpa (melewati jam pulang ${cfg.endTime}).`);
+        renderApp();
+      }
+      return markedCount;
+    };
+
+    window.forceRunAutoAlpaNow = async () => {
+      const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
+      const nowTime = new Date().toTimeString().substring(0, 5);
+      const effClass = state.filterAttClass;
+      const targetStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
+
+      let markedCount = 0;
+      for (const st of targetStudents) {
+        const existingRec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === state.todayStr);
+        if (!existingRec) {
+          const recordId = `att_${state.todayStr}_${st.id}`;
+          const newRec = {
+            id: recordId,
+            studentId: st.id,
+            studentName: st.name,
+            nisn: st.nisn,
+            classId: st.classId,
+            date: state.todayStr,
+            status: 'Alpa',
+            time: nowTime,
+            method: 'Otomatis Alpa'
+          };
+          markedCount++;
+          if (IS_PREVIEW) {
+            state.attendanceRecords.push(newRec);
+          } else if (db) {
+            try { await setDoc(doc(db, 'attendance', recordId), newRec); } catch {}
+          }
+        }
+      }
+
+      if (markedCount === 0) {
+        showToast('Seluruh siswa pada filter ini sudah memiliki status presensi (termasuk Sakit/Izin).');
+      } else {
+        showToast(`Berhasil! ${markedCount} siswa tanpa keterangan (selain Sakit/Izin/Hadir) otomatis ditandai Alpa.`);
+        renderApp();
+      }
+    };
+
     function renderAttendanceView() {
+      const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
+      const nowTime = new Date().toTimeString().substring(0, 5);
+
+      // Jalankan pengecekan otomatis jika sudah lewat jam pulang dan autoAlpaEnabled aktif
+      if (cfg.autoAlpaEnabled && nowTime > cfg.endTime) {
+        let autoAdded = false;
+        state.students.forEach(st => {
+          const hasRec = state.attendanceRecords.some(r => r.studentId === st.id && r.date === state.todayStr);
+          if (!hasRec) {
+            const recordId = `att_${state.todayStr}_${st.id}`;
+            const newRec = {
+              id: recordId,
+              studentId: st.id,
+              studentName: st.name,
+              nisn: st.nisn,
+              classId: st.classId,
+              date: state.todayStr,
+              status: 'Alpa',
+              time: cfg.endTime,
+              method: 'Otomatis (> Jam Pulang)'
+            };
+            state.attendanceRecords.push(newRec);
+            if (!IS_PREVIEW && db) {
+              setDoc(doc(db, 'attendance', recordId), newRec).catch(() => {});
+            }
+            autoAdded = true;
+          }
+        });
+      }
+
       const effClass = state.filterAttClass;
       const visStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
+
+      let currentPeriodBadge = '';
+      if (nowTime < cfg.startTime) {
+        currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]">⏳ Belum Masuk (${nowTime})</span>`;
+      } else if (nowTime <= cfg.lateThreshold) {
+        currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[11px]">🟢 Jam Masuk Tepat Waktu (${nowTime})</span>`;
+      } else if (nowTime <= cfg.endTime) {
+        currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 font-bold text-[11px]">🟡 Lewat Batas Masuk -> Otomatis Terlambat (${nowTime})</span>`;
+      } else {
+        currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 font-bold text-[11px]">🔴 Lewat Jam Pulang -> Otomatis Alpa (${nowTime})</span>`;
+      }
 
       const rows = visStudents.length === 0
         ? `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">Belum ada murid pada filter kelas ini.</td></tr>`
@@ -2024,12 +2182,15 @@
                 <td class="p-3 font-bold text-slate-900">${st.name}</td>
                 <td class="p-3 font-bold text-blue-700">${st.classId}</td>
                 <td class="p-3 font-mono">${st.nisn}</td>
-                <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${stText}</span></td>
+                <td class="p-3">
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${stText}</span>
+                  ${rec?.method ? `<span class="block text-[9px] text-slate-400 mt-0.5">${rec.method}</span>` : ''}
+                </td>
                 <td class="p-3 font-mono">${rec?.time || '-'}</td>
                 <td class="p-3 text-center">
                   <div class="flex justify-center gap-1">
                     ${['Hadir','Terlambat','Sakit','Izin','Alpa'].map(opt => `
-                      <button onclick="window.recordAttendance('${st.nisn}', '${opt}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${rec?.status === opt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white hover:bg-slate-100 text-slate-700'}">${opt[0]}</button>
+                      <button onclick="window.recordAttendance('${st.nisn}', '${opt}', 'Klik Manual', true)" title="Set ${opt}" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${rec?.status === opt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white hover:bg-slate-100 text-slate-700'}">${opt[0]}</button>
                     `).join('')}
                   </div>
                 </td>
@@ -2041,7 +2202,10 @@
         <div class="space-y-4">
           <div class="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-4">
             <div class="space-y-1 text-center lg:text-left">
-              <h3 class="font-black text-base">Presensi Harian Siswa (${effClass})</h3>
+              <div class="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                <h3 class="font-black text-base">Presensi Harian Siswa (${effClass})</h3>
+                ${currentPeriodBadge}
+              </div>
               <p class="text-xs text-slate-500">Pilih filter kelas, masukkan NISN, scan kamera, atau klik tombol cepat H/T/S/I/A.</p>
             </div>
             <div class="flex flex-wrap items-center justify-center gap-2">
@@ -2051,12 +2215,52 @@
               </select>
               <form onsubmit="window.handleQuickScan(event)" class="flex gap-2">
                 <input type="text" id="scan-nisn-input" placeholder="Ketik / Scan NISN..." class="p-2.5 border rounded-xl text-xs font-mono font-bold w-44" />
-                <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer">Catat Hadir</button>
+                <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer">Catat Absen</button>
               </form>
               <button onclick="window.openCameraScannerModal()" class="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center gap-1.5">
                 📷 Scan Kamera
               </button>
             </div>
+          </div>
+
+          <!-- PANEL PENGATURAN JAM MASUK, BATAS TELAT & JAM PULANG (AUTO-TELAT & AUTO-ALPA) -->
+          <div class="bg-blue-50/70 p-4 rounded-2xl border border-blue-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-sm">⏰</span>
+                <div>
+                  <h4 class="text-xs font-black text-blue-950">Pengaturan Jam Masuk, Batas Terlambat & Jam Pulang (Otomatis)</h4>
+                  <p class="text-[11px] text-slate-600">Siswa yang sudah diset <b>Sakit (S)</b> atau <b>Izin (I)</b> di awal akan dikecualikan dan tidak diubah menjadi Alpa/Telat.</p>
+                </div>
+              </div>
+              <button type="button" onclick="window.forceRunAutoAlpaNow()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-bold cursor-pointer shadow-2xs">
+                ⚡ Tandai Alpa Siswa Belum Absen
+              </button>
+            </div>
+
+            <form onsubmit="window.saveAttendanceSettings(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end pt-1 text-xs">
+              <div class="bg-white p-2.5 rounded-xl border border-blue-200">
+                <label class="text-[10px] font-bold text-slate-500 block mb-1">🟢 Jam Mulai Masuk</label>
+                <input type="time" id="att-set-start" value="${cfg.startTime}" class="w-full font-mono font-bold text-slate-900 focus:outline-none" />
+              </div>
+              <div class="bg-white p-2.5 rounded-xl border border-amber-300">
+                <label class="text-[10px] font-bold text-amber-800 block mb-1">🟡 Batas Tepat Waktu (Mulai Telat)</label>
+                <input type="time" id="att-set-late" value="${cfg.lateThreshold}" class="w-full font-mono font-bold text-slate-900 focus:outline-none" />
+              </div>
+              <div class="bg-white p-2.5 rounded-xl border border-rose-300">
+                <label class="text-[10px] font-bold text-rose-800 block mb-1">🔴 Jam Pulang (Batas Alpa)</label>
+                <input type="time" id="att-set-end" value="${cfg.endTime}" class="w-full font-mono font-bold text-slate-900 focus:outline-none" />
+              </div>
+              <div class="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2 h-[54px]">
+                <input type="checkbox" id="att-set-auto-alpa" ${cfg.autoAlpaEnabled ? 'checked' : ''} class="w-4 h-4 accent-blue-600 rounded cursor-pointer" />
+                <label for="att-set-auto-alpa" class="text-[11px] font-bold text-slate-700 leading-tight cursor-pointer">Auto-Alpa jika lewat Jam Pulang</label>
+              </div>
+              <div>
+                <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs">
+                  💾 Simpan Pengaturan Jam
+                </button>
+              </div>
+            </form>
           </div>
 
           <div class="bg-white p-6 rounded-3xl border border-slate-200 overflow-x-auto">
@@ -2079,15 +2283,38 @@
     window.handleQuickScan = (e) => {
       e.preventDefault();
       const val = document.getElementById('scan-nisn-input').value.trim();
-      window.recordAttendance(val, 'Hadir');
+      window.recordAttendance(val, 'AUTO', 'Input NISN', false);
     };
 
-    window.recordAttendance = async (code, status, method = 'Input Manual') => {
+    window.recordAttendance = async (code, status = 'AUTO', method = 'Input Manual', isExplicitOverride = false) => {
       const clean = String(code || '').replace(/^SISWA-/i, '').trim();
       const st = state.students.find(s => s.nisn === clean || s.id === clean);
       if (!st) return showToast(`NISN "${clean}" tidak ditemukan!`, 'error');
 
       const recordId = `att_${state.todayStr}_${st.id}`;
+      const existingRec = state.attendanceRecords.find(r => r.id === recordId);
+
+      // Jika bukan klik tombol manual H/T/S/I/A secara langsung, lindungi siswa yang sudah diset Sakit atau Izin di awal
+      if (!isExplicitOverride && existingRec && (existingRec.status === 'Sakit' || existingRec.status === 'Izin')) {
+        playBeep();
+        return showToast(`Info: ${st.name} sudah diset "${existingRec.status}" hari ini (dikecualikan dari absen otomatis).`);
+      }
+
+      const nowTime = new Date().toTimeString().substring(0, 5);
+      const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
+
+      let finalStatus = status;
+      // Jika dipanggil dari Scan QR atau Input NISN (bukan klik paksa tombol H/T/S/I/A), tentukan status berdasarkan jam
+      if (!isExplicitOverride && (status === 'AUTO' || status === 'Hadir')) {
+        if (nowTime > cfg.endTime) {
+          finalStatus = 'Alpa';
+        } else if (nowTime > cfg.lateThreshold) {
+          finalStatus = 'Terlambat';
+        } else {
+          finalStatus = 'Hadir';
+        }
+      }
+
       const newRec = {
         id: recordId,
         studentId: st.id,
@@ -2095,8 +2322,8 @@
         nisn: st.nisn,
         classId: st.classId,
         date: state.todayStr,
-        status,
-        time: new Date().toTimeString().substring(0, 5),
+        status: finalStatus,
+        time: nowTime,
         method
       };
 
@@ -2107,7 +2334,14 @@
       } else if (db) {
         await setDoc(doc(db, 'attendance', recordId), newRec);
       }
-      showToast(`Presensi ${st.name} (${st.classId}): ${status}`);
+
+      if (finalStatus === 'Terlambat' && !isExplicitOverride) {
+        showToast(`⏰ ${st.name} (${st.classId}) tercatat TERLAMBAT (Absen pukul ${nowTime} > ${cfg.lateThreshold})`);
+      } else if (finalStatus === 'Alpa' && !isExplicitOverride) {
+        showToast(`⚠️ Lewat jam pulang (${cfg.endTime}): ${st.name} tercatat ALPA`, 'error');
+      } else {
+        showToast(`Presensi ${st.name} (${st.classId}): ${finalStatus} (${nowTime})`);
+      }
       renderApp();
     };
 
