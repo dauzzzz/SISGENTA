@@ -2073,7 +2073,7 @@
                   ${renderSchoolLogoHtml("w-6 h-6", "text-[7px]")}
                 </div>
                 <div style="min-width: 0; flex: 1;">
-                  <div style="font-size: 6pt; font-weight: 800; color: #ffffff; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.15;">KARTU NOMOR INDUK SISWA NASIONAL (NISN)</div>
+                  <div style="font-size: 5.8pt; font-weight: 800; color: #ffffff; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.15;">KARTU NOMOR INDUK SISWA NASIONAL</div>
                   <div style="font-size: 5pt; font-weight: 700; color: #fbbf24; text-transform: uppercase; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word;">${state.schoolInfo.name}</div>
                 </div>
               </div>
@@ -2111,7 +2111,7 @@
                   <tr>
                     <td style="color: #64748b; font-weight: 600; vertical-align: top; padding: 0.2mm 0;">Wali/Ortu</td>
                     <td style="color: #64748b; vertical-align: top; padding: 0.2mm 0;">:</td>
-                    <td style="font-weight: 600; color: #334155; vertical-align: top; padding: 0.2mm 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 25mm;">${st.parentName || '-'}</td>
+                    <td style="font-weight: 600; color: #334155; vertical-align: top; padding: 0.2mm 0; word-wrap: break-word; overflow-wrap: anywhere;">${st.parentName || '-'}</td>
                   </tr>
                 </table>
               </div>
@@ -2153,7 +2153,7 @@
                       ${renderSchoolLogoHtml("w-8 h-8", "text-[10px]")}
                     </div>
                     <div class="min-w-0 flex-1">
-                      <div class="text-[11px] font-bold text-white uppercase tracking-wide leading-tight">KARTU NOMOR INDUK SISWA NASIONAL (NISN)</div>
+                      <div class="text-[11px] font-bold text-white uppercase tracking-wide leading-tight">KARTU NOMOR INDUK SISWA NASIONAL</div>
                       <div class="text-[10px] font-semibold text-amber-300 uppercase leading-tight mt-0.5 break-words">${state.schoolInfo.name}</div>
                     </div>
                   </div>
@@ -2188,10 +2188,10 @@
                         <span class="mr-1.5 text-slate-400">:</span>
                         <span class="font-bold text-slate-900">${String(st.classId || '').replace(/^Kelas\s*/i, '')} (${st.classId})</span>
                       </div>
-                      <div class="flex items-center">
+                      <div class="flex items-start">
                         <span class="w-16 text-slate-500 font-medium shrink-0">Wali/Ortu</span>
                         <span class="mr-1.5 text-slate-400">:</span>
-                        <span class="font-medium text-slate-700 truncate">${st.parentName || '-'}</span>
+                        <span class="font-medium text-slate-700 break-words">${st.parentName || '-'}</span>
                       </div>
                     </div>
                   </div>
