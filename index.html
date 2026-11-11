@@ -159,7 +159,7 @@
 
   <script type="module">
     const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwukd1IjMhjaO4cI_nlKHkSq8ym391sg62hZTvFkcwOn9EhLu0Ly78QOO160v58SeBJSA/exec";
-    const IS_PREVIEW = false;
+    const IS_PREVIEW = true;
 
     const firebaseConfig = {
  apiKey: "AIzaSyBh3rDToKKyTAFLh02RU3R4sQE96R-IngU",
@@ -253,6 +253,11 @@
       filterStudentSearch: '',
       filterStudentClass: 'Semua',
       studentImportPreview: [],
+      promoMode: 'auto',
+      promoFromClass: 'Kelas 1',
+      promoToClass: 'Kelas 2',
+      promoGradAction: 'graduate',
+      promoSelectedIds: [],
       filterTeacherSearch: '',
       teacherImportPreview: [],
       filterAttClass: 'Semua',
@@ -866,6 +871,7 @@
               </select>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+              <button onclick="window.openPromotionModal()" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs flex items-center gap-1">🎓 Kenaikan Kelas</button>
               <button onclick="window.downloadStudentTemplate()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-xl text-xs cursor-pointer">📄 Unduh Template Siswa</button>
               <button onclick="window.openImportStudentModal()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs">📥 Impor Template Siswa</button>
               <button onclick="window.exportStudentsExcel()" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-xl text-xs cursor-pointer">📊 Ekspor Data</button>
@@ -983,12 +989,336 @@
               </div>
             </div>
           </div>
+
+          <!-- MODAL KENAIKAN KELAS MASSAL / OTOMATIS -->
+          <div id="modal-class-promotion" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-xl w-full rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h3 class="font-black text-base text-slate-900">🎓 Proses Kenaikan Kelas Siswa</h3>
+                  <p class="text-[11px] text-slate-500">Naikkan tingkat kelas siswa secara otomatis di awal Tahun Pelajaran baru tanpa edit satu per satu.</p>
+                </div>
+                <button type="button" onclick="document.getElementById('modal-class-promotion').classList.add('hidden')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold cursor-pointer">Tutup</button>
+              </div>
+
+              <!-- Pilihan Mode Kenaikan Kelas -->
+              <div class="flex bg-slate-100 p-1 rounded-2xl gap-1 text-xs">
+                <button type="button" id="tab-promo-auto" onclick="window.switchPromoMode('auto')" class="flex-1 py-2 rounded-xl font-bold bg-purple-600 text-white shadow-xs cursor-pointer">⚡ Otomatis Semua Kelas (1–6)</button>
+                <button type="button" id="tab-promo-manual" onclick="window.switchPromoMode('manual')" class="flex-1 py-2 rounded-xl font-bold text-slate-600 cursor-pointer">🎯 Pilih Per Kelas / Siswa</button>
+              </div>
+
+              <!-- Konten Dinamis Kenaikan Kelas -->
+              <div id="promo-modal-body" class="space-y-4 text-xs"></div>
+            </div>
+          </div>
         </div>
       `;
     }
 
     window.updateStudentSearch = (v) => { state.filterStudentSearch = v; renderApp(); };
     window.updateStudentClassFilter = (v) => { state.filterStudentClass = v; renderApp(); };
+
+    window.openPromotionModal = () => {
+      state.promoMode = 'auto';
+      state.promoFromClass = 'Kelas 1';
+      state.promoToClass = 'Kelas 2';
+      state.promoGradAction = 'graduate';
+      const classStudents = state.students.filter(s => s.classId === state.promoFromClass);
+      state.promoSelectedIds = classStudents.map(s => s.id);
+      const modal = document.getElementById('modal-class-promotion');
+      if (modal) modal.classList.remove('hidden');
+      window.renderPromotionModalBody();
+    };
+
+    window.switchPromoMode = (mode) => {
+      state.promoMode = mode;
+      const btnAuto = document.getElementById('tab-promo-auto');
+      const btnManual = document.getElementById('tab-promo-manual');
+      if (btnAuto && btnManual) {
+        btnAuto.className = mode === 'auto'
+          ? 'flex-1 py-2 rounded-xl font-bold bg-purple-600 text-white shadow-xs cursor-pointer'
+          : 'flex-1 py-2 rounded-xl font-bold text-slate-600 cursor-pointer';
+        btnManual.className = mode === 'manual'
+          ? 'flex-1 py-2 rounded-xl font-bold bg-purple-600 text-white shadow-xs cursor-pointer'
+          : 'flex-1 py-2 rounded-xl font-bold text-slate-600 cursor-pointer';
+      }
+      if (mode === 'manual') {
+        const list = state.students.filter(s => s.classId === state.promoFromClass);
+        state.promoSelectedIds = list.map(s => s.id);
+      }
+      window.renderPromotionModalBody();
+    };
+
+    window.changePromoFromClass = (val) => {
+      state.promoFromClass = val;
+      const num = parseInt(val.replace('Kelas ', ''), 10);
+      if (num >= 1 && num <= 5) {
+        state.promoToClass = `Kelas ${num + 1}`;
+      } else {
+        state.promoToClass = 'Lulus';
+      }
+      const list = state.students.filter(s => s.classId === val);
+      state.promoSelectedIds = list.map(s => s.id);
+      window.renderPromotionModalBody();
+    };
+
+    window.togglePromoStudentCheck = (id, checked) => {
+      if (checked) {
+        if (!state.promoSelectedIds.includes(id)) state.promoSelectedIds.push(id);
+      } else {
+        state.promoSelectedIds = state.promoSelectedIds.filter(item => item !== id);
+      }
+      const countEl = document.getElementById('promo-selected-count');
+      if (countEl) countEl.textContent = `${state.promoSelectedIds.length} siswa dipilih`;
+    };
+
+    window.toggleAllPromoStudents = (checked) => {
+      const list = state.students.filter(s => s.classId === state.promoFromClass);
+      state.promoSelectedIds = checked ? list.map(s => s.id) : [];
+      window.renderPromotionModalBody();
+    };
+
+    window.renderPromotionModalBody = () => {
+      const container = document.getElementById('promo-modal-body');
+      if (!container) return;
+
+      const countByClass = (cls) => state.students.filter(s => s.classId === cls).length;
+
+      if (state.promoMode === 'auto') {
+        container.innerHTML = `
+          <div class="p-4 rounded-2xl bg-purple-50 border border-purple-200 space-y-2.5">
+            <div class="font-bold text-purple-900 text-xs">Ringkasan Kenaikan Kelas Otomatis Serentak:</div>
+            <p class="text-[11px] text-purple-800 leading-relaxed">
+              Sistem akan menaikkan seluruh siswa secara berurutan mulai dari tingkat tertinggi agar data tidak tertumpuk:
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+              <div class="p-2.5 bg-white rounded-xl border border-purple-200 flex justify-between items-center">
+                <span class="font-bold text-slate-700">Kelas 1 → 2</span>
+                <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-lg font-bold">${countByClass('Kelas 1')} Siswa</span>
+              </div>
+              <div class="p-2.5 bg-white rounded-xl border border-purple-200 flex justify-between items-center">
+                <span class="font-bold text-slate-700">Kelas 2 → 3</span>
+                <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-lg font-bold">${countByClass('Kelas 2')} Siswa</span>
+              </div>
+              <div class="p-2.5 bg-white rounded-xl border border-purple-200 flex justify-between items-center">
+                <span class="font-bold text-slate-700">Kelas 3 → 4</span>
+                <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-lg font-bold">${countByClass('Kelas 3')} Siswa</span>
+              </div>
+              <div class="p-2.5 bg-white rounded-xl border border-purple-200 flex justify-between items-center">
+                <span class="font-bold text-slate-700">Kelas 4 → 5</span>
+                <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-lg font-bold">${countByClass('Kelas 4')} Siswa</span>
+              </div>
+              <div class="p-2.5 bg-white rounded-xl border border-purple-200 flex justify-between items-center">
+                <span class="font-bold text-slate-700">Kelas 5 → 6</span>
+                <span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-lg font-bold">${countByClass('Kelas 5')} Siswa</span>
+              </div>
+              <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-center">
+                <span class="font-bold text-amber-900">Kelas 6 (Akhir)</span>
+                <span class="px-2 py-0.5 bg-amber-200 text-amber-900 rounded-lg font-bold">${countByClass('Kelas 6')} Siswa</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <label class="font-bold text-slate-800 block">Perlakuan untuk Siswa Kelas 6 (${countByClass('Kelas 6')} Siswa):</label>
+            <select onchange="window.updatePromoGradAction(this.value)" class="w-full p-2.5 border rounded-xl font-bold bg-white text-slate-800">
+              <option value="graduate" ${state.promoGradAction === 'graduate' ? 'selected' : ''}>🎓 Luluskan & Hapus dari Daftar Murid Aktif (Direkomendasikan)</option>
+              <option value="keep" ${state.promoGradAction === 'keep' ? 'selected' : ''}>📌 Tetap Simpan di Kelas 6 (Jangan Dihapus)</option>
+            </select>
+            <p class="text-[10px] text-slate-500">Setelah kenaikan otomatis selesai, Kelas 1 akan kosong dan siap diisi murid baru Tahun Pelajaran baru.</p>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="document.getElementById('modal-class-promotion').classList.add('hidden')" class="px-4 py-2.5 border rounded-xl font-bold cursor-pointer">Batal</button>
+            <button type="button" id="btn-exec-promo" onclick="window.executeAutoPromotion()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold cursor-pointer shadow-md">🚀 Proses Naik Kelas Otomatis Sekarang</button>
+          </div>
+        `;
+      } else {
+        const classStudents = state.students.filter(s => s.classId === state.promoFromClass);
+        const allChecked = classStudents.length > 0 && state.promoSelectedIds.length === classStudents.length;
+
+        const studentRows = classStudents.length === 0
+          ? `<div class="p-4 text-center text-slate-400 font-bold">Tidak ada siswa di ${state.promoFromClass}.</div>`
+          : classStudents.map((s, idx) => {
+              const isChecked = state.promoSelectedIds.includes(s.id);
+              return `
+                <label class="flex items-center justify-between p-2.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                  <div class="flex items-center gap-2.5">
+                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="window.togglePromoStudentCheck('${s.id}', this.checked)" class="w-4 h-4 accent-purple-600 rounded cursor-pointer" />
+                    <span class="text-slate-400 font-mono text-[11px]">${idx + 1}.</span>
+                    <div>
+                      <div class="font-bold text-slate-900">${s.name}</div>
+                      <div class="text-[10px] text-slate-500 font-mono">NISN: ${s.nisn}</div>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg font-bold text-[10px]">${s.classId}</span>
+                </label>
+              `;
+            }).join('');
+
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+            <div>
+              <label class="font-bold block mb-1 text-slate-700">Dari Kelas Asal:</label>
+              <select onchange="window.changePromoFromClass(this.value)" class="w-full p-2.5 border rounded-xl font-bold bg-white">
+                ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${state.promoFromClass === c ? 'selected' : ''}>${c} (${countByClass(c)} Siswa)</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="font-bold block mb-1 text-slate-700">Naik / Pindah ke Kelas Tujuan:</label>
+              <select onchange="window.updatePromoToClass(this.value)" class="w-full p-2.5 border rounded-xl font-bold bg-purple-50 text-purple-900 border-purple-300">
+                ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${state.promoToClass === c ? 'selected' : ''}>Naik ke ${c}</option>`).join('')}
+                <option value="Lulus" ${state.promoToClass === 'Lulus' ? 'selected' : ''}>🎓 Luluskan (Hapus dari Murid Aktif)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="border border-slate-200 rounded-2xl overflow-hidden">
+            <div class="bg-slate-100 px-3.5 py-2.5 flex items-center justify-between border-b border-slate-200">
+              <label class="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                <input type="checkbox" ${allChecked ? 'checked' : ''} onchange="window.toggleAllPromoStudents(this.checked)" class="w-4 h-4 accent-purple-600 rounded cursor-pointer" />
+                <span>Pilih Semua Siswa ${state.promoFromClass}</span>
+              </label>
+              <span id="promo-selected-count" class="text-[11px] font-bold text-purple-700">${state.promoSelectedIds.length} siswa dipilih</span>
+            </div>
+            <div class="max-h-52 overflow-y-auto divide-y divide-slate-100 bg-white">
+              ${studentRows}
+            </div>
+          </div>
+
+          <p class="text-[10px] text-slate-500">💡 Tip: Hilangkan centang pada siswa yang tinggal kelas agar tidak ikut naik kelas.</p>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="document.getElementById('modal-class-promotion').classList.add('hidden')" class="px-4 py-2.5 border rounded-xl font-bold cursor-pointer">Batal</button>
+            <button type="button" id="btn-exec-promo" onclick="window.executeManualPromotion()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold cursor-pointer shadow-md">✅ Proses Kenaikan Kelas Terpilih</button>
+          </div>
+        `;
+      }
+    };
+
+    window.updatePromoGradAction = (val) => { state.promoGradAction = val; };
+    window.updatePromoToClass = (val) => { state.promoToClass = val; };
+
+    window.executeAutoPromotion = async () => {
+      if (state.students.length === 0) {
+        return showToast('Belum ada data murid untuk dinaikkan kelas!', 'error');
+      }
+
+      const btn = document.getElementById('btn-exec-promo');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Memproses Kenaikan Kelas...';
+      }
+
+      try {
+        let promotedCount = 0;
+        let graduatedCount = 0;
+        const nextStudents = [];
+
+        for (const st of state.students) {
+          if (st.classId === 'Kelas 6') {
+            if (state.promoGradAction === 'graduate') {
+              graduatedCount++;
+              if (!IS_PREVIEW && db) {
+                await deleteDoc(doc(db, 'students', st.id));
+              }
+            } else {
+              nextStudents.push(st);
+            }
+          } else {
+            const currentLevel = parseInt(String(st.classId || '').replace('Kelas ', ''), 10);
+            if (currentLevel >= 1 && currentLevel <= 5) {
+              const newClassId = `Kelas ${currentLevel + 1}`;
+              const updatedSt = { ...st, classId: newClassId };
+              nextStudents.push(updatedSt);
+              promotedCount++;
+              if (!IS_PREVIEW && db) {
+                await setDoc(doc(db, 'students', st.id), updatedSt);
+              }
+            } else {
+              nextStudents.push(st);
+            }
+          }
+        }
+
+        if (IS_PREVIEW) {
+          state.students = nextStudents;
+        }
+
+        const modal = document.getElementById('modal-class-promotion');
+        if (modal) modal.classList.add('hidden');
+        showToast(`Berhasil! ${promotedCount} siswa naik kelas${graduatedCount > 0 ? ` & ${graduatedCount} siswa Kelas 6 diluluskan` : ''}.`);
+        renderApp();
+      } catch (err) {
+        showToast('Terjadi kesalahan saat memproses kenaikan kelas.', 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🚀 Proses Naik Kelas Otomatis Sekarang';
+        }
+      }
+    };
+
+    window.executeManualPromotion = async () => {
+      if (!state.promoSelectedIds || state.promoSelectedIds.length === 0) {
+        return showToast('Pilih minimal 1 siswa yang akan dinaikkan kelas!', 'error');
+      }
+      if (state.promoFromClass === state.promoToClass) {
+        return showToast('Kelas asal dan kelas tujuan tidak boleh sama!', 'error');
+      }
+
+      const btn = document.getElementById('btn-exec-promo');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Memproses...';
+      }
+
+      try {
+        const selectedSet = new Set(state.promoSelectedIds);
+        let count = 0;
+
+        if (state.promoToClass === 'Lulus') {
+          const remaining = [];
+          for (const st of state.students) {
+            if (selectedSet.has(st.id)) {
+              count++;
+              if (!IS_PREVIEW && db) {
+                await deleteDoc(doc(db, 'students', st.id));
+              }
+            } else {
+              remaining.push(st);
+            }
+          }
+          if (IS_PREVIEW) state.students = remaining;
+          showToast(`${count} siswa ${state.promoFromClass} berhasil diluluskan!`);
+        } else {
+          const updatedList = [];
+          for (const st of state.students) {
+            if (selectedSet.has(st.id)) {
+              const updatedSt = { ...st, classId: state.promoToClass };
+              updatedList.push(updatedSt);
+              count++;
+              if (!IS_PREVIEW && db) {
+                await setDoc(doc(db, 'students', st.id), updatedSt);
+              }
+            } else {
+              updatedList.push(st);
+            }
+          }
+          if (IS_PREVIEW) state.students = updatedList;
+          showToast(`${count} siswa berhasil dinaikkan dari ${state.promoFromClass} ke ${state.promoToClass}!`);
+        }
+
+        const modal = document.getElementById('modal-class-promotion');
+        if (modal) modal.classList.add('hidden');
+        renderApp();
+      } catch (err) {
+        showToast('Gagal memproses kenaikan kelas.', 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '✅ Proses Kenaikan Kelas Terpilih';
+        }
+      }
+    };
 
     window.updateStudentPhotoPreviewUI = () => {
       const box = document.getElementById('st-photo-preview-box');
