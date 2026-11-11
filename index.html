@@ -261,6 +261,7 @@
       filterTeacherSearch: '',
       teacherImportPreview: [],
       filterAttClass: 'Semua',
+      selectedAttDate: new Date().toISOString().split('T')[0],
       filterRecapClass: 'Semua',
       filterRecapPeriod: 'Per Bulan',
       filterRecapType: 'Detail Harian',
@@ -2084,23 +2085,24 @@
     window.forceRunAutoAlpaNow = async () => {
       const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
       const nowTime = new Date().toTimeString().substring(0, 5);
+      const activeDate = state.selectedAttDate || state.todayStr;
       const effClass = state.filterAttClass;
       const targetStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
 
       let markedCount = 0;
       for (const st of targetStudents) {
-        const existingRec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === state.todayStr);
+        const existingRec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === activeDate);
         if (!existingRec) {
-          const recordId = `att_${state.todayStr}_${st.id}`;
+          const recordId = `att_${activeDate}_${st.id}`;
           const newRec = {
             id: recordId,
             studentId: st.id,
             studentName: st.name,
             nisn: st.nisn,
             classId: st.classId,
-            date: state.todayStr,
+            date: activeDate,
             status: 'Alpa',
-            time: nowTime,
+            time: activeDate === state.todayStr ? nowTime : cfg.endTime,
             method: 'Otomatis Alpa'
           };
           markedCount++;
@@ -2113,20 +2115,44 @@
       }
 
       if (markedCount === 0) {
-        showToast('Seluruh siswa pada filter ini sudah memiliki status presensi (termasuk Sakit/Izin).');
+        showToast(`Seluruh siswa pada tanggal ${activeDate} sudah memiliki status presensi (termasuk Sakit/Izin).`);
       } else {
-        showToast(`Berhasil! ${markedCount} siswa tanpa keterangan (selain Sakit/Izin/Hadir) otomatis ditandai Alpa.`);
+        showToast(`Berhasil! ${markedCount} siswa tanpa keterangan pada ${activeDate} otomatis ditandai Alpa.`);
         renderApp();
       }
+    };
+
+    window.updateAttDate = (val) => {
+      if (!val) return;
+      state.selectedAttDate = val;
+      renderApp();
+    };
+
+    window.shiftAttDate = (daysOffset) => {
+      const baseStr = state.selectedAttDate || state.todayStr;
+      const parts = baseStr.split('-').map(Number);
+      const dt = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+      dt.setDate(dt.getDate() + daysOffset);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const d = String(dt.getDate()).padStart(2, '0');
+      state.selectedAttDate = `${y}-${m}-${d}`;
+      renderApp();
+    };
+
+    window.resetAttDateToday = () => {
+      state.selectedAttDate = state.todayStr;
+      renderApp();
     };
 
     function renderAttendanceView() {
       const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
       const nowTime = new Date().toTimeString().substring(0, 5);
+      const activeDate = state.selectedAttDate || state.todayStr;
+      const isToday = activeDate === state.todayStr;
 
-      // Jalankan pengecekan otomatis jika sudah lewat jam pulang dan autoAlpaEnabled aktif
-      if (cfg.autoAlpaEnabled && nowTime > cfg.endTime) {
-        let autoAdded = false;
+      // Jalankan pengecekan otomatis hanya untuk hari ini jika sudah lewat jam pulang dan autoAlpaEnabled aktif
+      if (isToday && cfg.autoAlpaEnabled && nowTime > cfg.endTime) {
         state.students.forEach(st => {
           const hasRec = state.attendanceRecords.some(r => r.studentId === st.id && r.date === state.todayStr);
           if (!hasRec) {
@@ -2146,7 +2172,6 @@
             if (!IS_PREVIEW && db) {
               setDoc(doc(db, 'attendance', recordId), newRec).catch(() => {});
             }
-            autoAdded = true;
           }
         });
       }
@@ -2155,7 +2180,9 @@
       const visStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
 
       let currentPeriodBadge = '';
-      if (nowTime < cfg.startTime) {
+      if (!isToday) {
+        currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-300 font-bold text-[11px]">📅 Mode Edit Tanggal: ${activeDate}</span>`;
+      } else if (nowTime < cfg.startTime) {
         currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]">⏳ Belum Masuk (${nowTime})</span>`;
       } else if (nowTime <= cfg.lateThreshold) {
         currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[11px]">🟢 Jam Masuk Tepat Waktu (${nowTime})</span>`;
@@ -2168,7 +2195,7 @@
       const rows = visStudents.length === 0
         ? `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">Belum ada murid pada filter kelas ini.</td></tr>`
         : visStudents.map((st, idx) => {
-            const rec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === state.todayStr);
+            const rec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === activeDate);
             const stText = rec?.status || 'Belum Presensi';
             const badgeColor =
               stText === 'Hadir' ? 'bg-emerald-100 text-emerald-800' :
@@ -2206,9 +2233,17 @@
                 <h3 class="font-black text-base">Presensi Harian Siswa (${effClass})</h3>
                 ${currentPeriodBadge}
               </div>
-              <p class="text-xs text-slate-500">Pilih filter kelas, masukkan NISN, scan kamera, atau klik tombol cepat H/T/S/I/A.</p>
+              <p class="text-xs text-slate-500">Pilih tanggal (bisa kembali ke tanggal sebelumnya), filter kelas, atau klik tombol cepat H/T/S/I/A untuk mengubah kehadiran.</p>
             </div>
             <div class="flex flex-wrap items-center justify-center gap-2">
+              <!-- Pemilih Tanggal & Navigasi Tanggal Sebelumnya -->
+              <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button type="button" onclick="window.shiftAttDate(-1)" title="Tanggal Sebelumnya (Kemarin)" class="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 cursor-pointer shadow-2xs">◀ Tgl Sebelumnya</button>
+                <input type="date" value="${activeDate}" onchange="window.updateAttDate(this.value)" class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 cursor-pointer" />
+                <button type="button" onclick="window.shiftAttDate(1)" title="Tanggal Berikutnya" class="px-2 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 cursor-pointer shadow-2xs">▶</button>
+                ${!isToday ? `<button type="button" onclick="window.resetAttDateToday()" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow-2xs">Hari Ini</button>` : ''}
+              </div>
+
               <select onchange="window.updateAttClassFilter(this.value)" class="p-2.5 border rounded-xl text-xs font-bold bg-slate-50">
                 <option value="Semua" ${effClass === 'Semua' ? 'selected' : ''}>Semua Kelas (${state.students.length})</option>
                 ${ALL_CLASS_NAMES.map(c => `<option value="${c}" ${effClass === c ? 'selected' : ''}>${c}</option>`).join('')}
@@ -2222,6 +2257,16 @@
               </button>
             </div>
           </div>
+
+          ${!isToday ? `
+            <div class="bg-purple-50 border border-purple-200 px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2 text-purple-900">
+                <span>🗓️</span>
+                <span>Anda sedang membuka data presensi tanggal <b>${activeDate}</b>. Klik tombol <b>H / T / S / I / A</b> pada tabel di bawah untuk memperbaiki status siswa yang lupa absen.</span>
+              </div>
+              <button type="button" onclick="window.resetAttDateToday()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-[11px] cursor-pointer">Kembali ke Hari Ini (${state.todayStr})</button>
+            </div>
+          ` : ''}
 
           <!-- PANEL PENGATURAN JAM MASUK, BATAS TELAT & JAM PULANG (AUTO-TELAT & AUTO-ALPA) -->
           <div class="bg-blue-50/70 p-4 rounded-2xl border border-blue-200 space-y-3">
@@ -2266,7 +2311,7 @@
           <div class="bg-white p-6 rounded-3xl border border-slate-200 overflow-x-auto">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 font-bold text-slate-700">
-                <tr><th class="p-3">No</th><th class="p-3">Nama Siswa</th><th class="p-3">Kelas</th><th class="p-3">NISN</th><th class="p-3">Status (${state.todayStr})</th><th class="p-3">Waktu</th><th class="p-3 text-center">Ubah Status Cepat</th></tr>
+                <tr><th class="p-3">No</th><th class="p-3">Nama Siswa</th><th class="p-3">Kelas</th><th class="p-3">NISN</th><th class="p-3">Status (${activeDate})</th><th class="p-3">Waktu</th><th class="p-3 text-center">Ubah Status Cepat</th></tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
@@ -2291,22 +2336,27 @@
       const st = state.students.find(s => s.nisn === clean || s.id === clean);
       if (!st) return showToast(`NISN "${clean}" tidak ditemukan!`, 'error');
 
-      const recordId = `att_${state.todayStr}_${st.id}`;
+      const activeDate = state.selectedAttDate || state.todayStr;
+      const isToday = activeDate === state.todayStr;
+      const recordId = `att_${activeDate}_${st.id}`;
       const existingRec = state.attendanceRecords.find(r => r.id === recordId);
 
       // Jika bukan klik tombol manual H/T/S/I/A secara langsung, lindungi siswa yang sudah diset Sakit atau Izin di awal
       if (!isExplicitOverride && existingRec && (existingRec.status === 'Sakit' || existingRec.status === 'Izin')) {
         playBeep();
-        return showToast(`Info: ${st.name} sudah diset "${existingRec.status}" hari ini (dikecualikan dari absen otomatis).`);
+        return showToast(`Info: ${st.name} sudah diset "${existingRec.status}" pada ${activeDate} (dikecualikan dari absen otomatis).`);
       }
 
       const nowTime = new Date().toTimeString().substring(0, 5);
       const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
 
       let finalStatus = status;
-      // Jika dipanggil dari Scan QR atau Input NISN (bukan klik paksa tombol H/T/S/I/A), tentukan status berdasarkan jam
+      // Jika dipanggil dari Scan QR atau Input NISN (bukan klik paksa tombol H/T/S/I/A)
       if (!isExplicitOverride && (status === 'AUTO' || status === 'Hadir')) {
-        if (nowTime > cfg.endTime) {
+        if (!isToday) {
+          // Saat mengedit tanggal sebelumnya via input NISN, langsung catat Hadir
+          finalStatus = 'Hadir';
+        } else if (nowTime > cfg.endTime) {
           finalStatus = 'Alpa';
         } else if (nowTime > cfg.lateThreshold) {
           finalStatus = 'Terlambat';
@@ -2321,10 +2371,10 @@
         studentName: st.name,
         nisn: st.nisn,
         classId: st.classId,
-        date: state.todayStr,
+        date: activeDate,
         status: finalStatus,
-        time: nowTime,
-        method
+        time: isToday ? nowTime : (existingRec?.time || cfg.startTime),
+        method: !isToday && isExplicitOverride ? 'Edit Tanggal Sebelumnya' : method
       };
 
       playBeep();
@@ -2335,12 +2385,12 @@
         await setDoc(doc(db, 'attendance', recordId), newRec);
       }
 
-      if (finalStatus === 'Terlambat' && !isExplicitOverride) {
+      if (finalStatus === 'Terlambat' && !isExplicitOverride && isToday) {
         showToast(`⏰ ${st.name} (${st.classId}) tercatat TERLAMBAT (Absen pukul ${nowTime} > ${cfg.lateThreshold})`);
-      } else if (finalStatus === 'Alpa' && !isExplicitOverride) {
+      } else if (finalStatus === 'Alpa' && !isExplicitOverride && isToday) {
         showToast(`⚠️ Lewat jam pulang (${cfg.endTime}): ${st.name} tercatat ALPA`, 'error');
       } else {
-        showToast(`Presensi ${st.name} (${st.classId}): ${finalStatus} (${nowTime})`);
+        showToast(`Presensi ${st.name} (${activeDate}): ${finalStatus}`);
       }
       renderApp();
     };
