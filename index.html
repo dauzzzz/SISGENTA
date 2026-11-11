@@ -79,20 +79,27 @@
         font-size: 7.5pt !important;
       }
       body.printing-daily-detail .daily-recap-table th {
-        font-size: 8pt !important;
+        font-size: 7.5pt !important;
         background-color: #f1f5f9 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
         border: 1px solid #000 !important;
-        padding: 3px 2px !important;
+        padding: 2px 1px !important;
         text-align: center !important;
+        line-height: 1.15 !important;
       }
       body.printing-daily-detail .daily-recap-table td {
         border: 1px solid #000 !important;
-        padding: 3px 2px !important;
+        padding: 2px 2px !important;
         vertical-align: middle !important;
-        overflow-wrap: anywhere;
-        word-wrap: break-word;
+        line-height: 1.15 !important;
+      }
+      body.printing-daily-detail .daily-recap-table td.student-name-cell {
+        text-align: left !important;
+        padding: 2px 4px !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
       }
       body.printing-daily-detail .daily-recap-table tr {
         break-inside: avoid !important;
@@ -346,20 +353,27 @@
               font-size: 7.5pt !important;
             }
             .daily-recap-table th {
-              font-size: 8pt !important;
+              font-size: 7.5pt !important;
               background-color: #f1f5f9 !important;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
               border: 1px solid #000 !important;
-              padding: 3px 2px !important;
+              padding: 2px 1px !important;
               text-align: center !important;
+              line-height: 1.15 !important;
             }
             .daily-recap-table td {
               border: 1px solid #000 !important;
-              padding: 3px 2px !important;
+              padding: 2px 2px !important;
               vertical-align: middle !important;
-              overflow-wrap: anywhere;
-              word-wrap: break-word;
+              line-height: 1.15 !important;
+            }
+            .daily-recap-table td.student-name-cell {
+              text-align: left !important;
+              padding: 2px 4px !important;
+              white-space: normal !important;
+              word-break: normal !important;
+              overflow-wrap: break-word !important;
             }
             .daily-recap-table tr {
               break-inside: avoid !important;
@@ -2416,10 +2430,18 @@
       let printContainerContent = '';
 
       if (state.filterRecapType === 'Detail Harian') {
+        const noColPct = 3;
+        const nameColPct = 22;
+        const sumColPct = 2; // 4 kolom jumlah (H, I, S, A) = 8%
+        const dayColPct = ((100 - noColPct - nameColPct - (sumColPct * 4)) / daysInMonth).toFixed(3);
+
+        let colGroupHtml = `<colgroup><col style="width: ${noColPct}%;" /><col style="width: ${nameColPct}%;" />`;
         let headerDaysHtml = '';
         for (let d = 1; d <= daysInMonth; d++) {
-          headerDaysHtml += `<th style="width: 20px;" class="border border-slate-600 p-1 text-[7.5pt]">${d}</th>`;
+          colGroupHtml += `<col style="width: ${dayColPct}%;" />`;
+          headerDaysHtml += `<th class="border border-slate-600 p-0.5 text-[7.5pt]">${d}</th>`;
         }
+        colGroupHtml += `<col style="width: ${sumColPct}%;" /><col style="width: ${sumColPct}%;" /><col style="width: ${sumColPct}%;" /><col style="width: ${sumColPct}%;" /></colgroup>`;
 
         const dailyRows = filteredStudents.length === 0
           ? `<tr><td colspan="${daysInMonth + 6}" class="p-4 text-center text-slate-400 font-bold">Belum ada data murid pada kelas ini.</td></tr>`
@@ -2441,60 +2463,61 @@
                   else if (rec.status === 'Sakit') { mark = 'S'; countS++; }
                   else if (rec.status === 'Alpa') { mark = 'A'; countA++; }
                 }
-                dayCells += `<td style="width: 20px;" class="border border-slate-600 p-1 text-center font-bold text-[7.5pt]">${mark}</td>`;
+                dayCells += `<td class="border border-slate-600 p-0.5 text-center font-bold text-[7.5pt]">${mark}</td>`;
               }
 
               return `
                 <tr>
-                  <td style="width: 28px;" class="border border-slate-600 p-1 text-center">${idx + 1}</td>
-                  <td class="border border-slate-600 p-1.5 text-left font-bold" style="overflow-wrap: anywhere; word-wrap: break-word; min-width: 110px;">${st.name}</td>
+                  <td class="border border-slate-600 p-1 text-center">${idx + 1}</td>
+                  <td class="student-name-cell border border-slate-600 px-1.5 py-1 text-left font-bold" style="white-space: normal; word-break: normal; overflow-wrap: break-word;">${st.name}</td>
                   ${dayCells}
-                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-emerald-700">${countH}</td>
-                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-indigo-700">${countI}</td>
-                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-blue-700">${countS}</td>
-                  <td style="width: 24px;" class="border border-slate-600 p-1 text-center font-bold text-rose-700">${countA}</td>
+                  <td class="border border-slate-600 p-0.5 text-center font-bold text-emerald-700">${countH}</td>
+                  <td class="border border-slate-600 p-0.5 text-center font-bold text-indigo-700">${countI}</td>
+                  <td class="border border-slate-600 p-0.5 text-center font-bold text-blue-700">${countS}</td>
+                  <td class="border border-slate-600 p-0.5 text-center font-bold text-rose-700">${countA}</td>
                 </tr>
               `;
             }).join('');
 
         printContainerContent = `
-          <div class="border-b-2 border-slate-900 pb-3 flex items-center gap-4">
-            <div class="shrink-0">${renderSchoolLogoHtml("w-12 h-12", "text-xs")}</div>
+          <div class="border-b-2 border-slate-900 pb-2.5 flex items-center gap-4">
+            <div class="shrink-0">${renderSchoolLogoHtml("w-11 h-11", "text-xs")}</div>
             <div class="flex-1 text-center">
-              <h2 class="text-xs font-black uppercase text-slate-900">PEMERINTAH KABUPATEN LAMONGAN</h2>
-              <h3 class="text-sm font-black uppercase text-blue-900">${state.schoolInfo.name || 'SDN GEDONGBOYOUNTUNG'}</h3>
-              <p class="text-[10px] text-slate-600">${state.schoolInfo.address || ''} • NPSN: ${state.schoolInfo.npsn || '20506021'}</p>
-              <p class="text-xs font-bold text-slate-800 mt-1 uppercase">REKAPITULASI KEHADIRAN SISWA — BULAN ${monthNameStr.toUpperCase()} ${year} — KELAS: ${effClass.toUpperCase()}</p>
+              <h2 class="text-xs font-black uppercase text-slate-900 leading-tight">PEMERINTAH KABUPATEN LAMONGAN</h2>
+              <h3 class="text-sm font-black uppercase text-blue-900 leading-tight">${state.schoolInfo.name || 'SDN GEDONGBOYOUNTUNG'}</h3>
+              <p class="text-[9.5px] text-slate-600 leading-tight">${state.schoolInfo.address || ''} • NPSN: ${state.schoolInfo.npsn || '20506021'}</p>
+              <p class="text-[11px] font-bold text-slate-800 mt-0.5 uppercase leading-tight">REKAPITULASI KEHADIRAN SISWA — BULAN ${monthNameStr.toUpperCase()} ${year} — KELAS: ${effClass.toUpperCase()}</p>
             </div>
           </div>
 
-          <table class="daily-recap-table w-full text-[7.5pt] border-collapse border border-slate-600">
+          <table class="daily-recap-table w-full text-[7.5pt] border-collapse border border-slate-600" style="table-layout: fixed; width: 100%;">
+            ${colGroupHtml}
             <thead>
               <tr class="bg-slate-100 font-bold text-center">
-                <th rowspan="2" style="width: 28px;" class="border border-slate-600 p-1">No.</th>
-                <th rowspan="2" class="border border-slate-600 p-1 text-left" style="min-width: 110px;">Nama Siswa</th>
-                <th colspan="${daysInMonth}" class="border border-slate-600 p-1">Tanggal (1 - ${daysInMonth})</th>
-                <th colspan="4" class="border border-slate-600 p-1">Jumlah</th>
+                <th rowspan="2" class="border border-slate-600 p-1">No.</th>
+                <th rowspan="2" class="border border-slate-600 px-1.5 py-1 text-left">Nama Siswa</th>
+                <th colspan="${daysInMonth}" class="border border-slate-600 p-0.5">Tanggal (1 - ${daysInMonth})</th>
+                <th colspan="4" class="border border-slate-600 p-0.5">Jumlah</th>
               </tr>
               <tr class="bg-slate-100 font-bold text-center">
                 ${headerDaysHtml}
-                <th style="width: 24px;" class="border border-slate-600 p-1">H</th>
-                <th style="width: 24px;" class="border border-slate-600 p-1">I</th>
-                <th style="width: 24px;" class="border border-slate-600 p-1">S</th>
-                <th style="width: 24px;" class="border border-slate-600 p-1">A</th>
+                <th class="border border-slate-600 p-0.5">H</th>
+                <th class="border border-slate-600 p-0.5">I</th>
+                <th class="border border-slate-600 p-0.5">S</th>
+                <th class="border border-slate-600 p-0.5">A</th>
               </tr>
             </thead>
             <tbody>${dailyRows}</tbody>
           </table>
 
-          <div class="recap-signature-section pt-5 flex justify-between text-xs text-center font-bold">
+          <div class="recap-signature-section pt-4 flex justify-between text-xs text-center font-bold">
             <div style="width: 220px;">
-              <p class="mb-14">Mengetahui,<br/>Kepala Sekolah</p>
+              <p class="mb-12">Mengetahui,<br/>Kepala Sekolah</p>
               <p class="underline font-bold">${state.schoolInfo.principal || '-'}</p>
               <p class="font-normal font-mono text-[11px]">NIP. ${state.schoolInfo.principalNip || '-'}</p>
             </div>
             <div style="width: 220px;">
-              <p class="mb-14">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
+              <p class="mb-12">Lamongan, ${state.todayStr}<br/>${teacherRoleTitle}</p>
               <p class="underline font-bold">${teacherNameForClass}</p>
               <p class="font-normal font-mono text-[11px]">${teacherNipForClass !== '-' ? 'NIP. ' + teacherNipForClass : '-'}</p>
             </div>
