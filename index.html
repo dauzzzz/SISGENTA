@@ -211,6 +211,84 @@
 
     const ALL_CLASS_NAMES = ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6'];
 
+    // KALENDER HARI LIBUR NASIONAL & CUTI BERSAMA INDONESIA (OTOMATIS KODE 'L')
+    const BUILTIN_INDONESIA_HOLIDAYS = {
+      // 2025
+      '2025-01-01': 'Tahun Baru 2025 Masehi',
+      '2025-01-27': 'Isra Mikraj Nabi Muhammad SAW',
+      '2025-01-28': 'Cuti Bersama Tahun Baru Imlek',
+      '2025-01-29': 'Tahun Baru Imlek 2576 Kongzili',
+      '2025-03-28': 'Cuti Bersama Hari Suci Nyepi',
+      '2025-03-29': 'Hari Suci Nyepi Tahun Baru Saka 1947',
+      '2025-03-31': 'Hari Raya Idul Fitri 1446 H',
+      '2025-04-01': 'Hari Raya Idul Fitri 1446 H',
+      '2025-04-02': 'Cuti Bersama Idul Fitri 1446 H',
+      '2025-04-03': 'Cuti Bersama Idul Fitri 1446 H',
+      '2025-04-04': 'Cuti Bersama Idul Fitri 1446 H',
+      '2025-04-07': 'Cuti Bersama Idul Fitri 1446 H',
+      '2025-04-18': 'Wafat Yesus Kristus',
+      '2025-04-20': 'Kebangkitan Yesus Kristus (Paskah)',
+      '2025-05-01': 'Hari Buruh Internasional',
+      '2025-05-12': 'Hari Raya Waisak 2569 BE',
+      '2025-05-13': 'Cuti Bersama Hari Raya Waisak',
+      '2025-05-29': 'Kenaikan Yesus Kristus',
+      '2025-05-30': 'Cuti Bersama Kenaikan Yesus Kristus',
+      '2025-06-01': 'Hari Lahir Pancasila',
+      '2025-06-06': 'Hari Raya Idul Adha 1446 H',
+      '2025-06-09': 'Cuti Bersama Idul Adha 1446 H',
+      '2025-06-27': '1 Muharam Tahun Baru Islam 1447 H',
+      '2025-08-17': 'Hari Kemerdekaan Republik Indonesia',
+      '2025-08-18': 'Cuti Bersama Kemerdekaan RI',
+      '2025-09-05': 'Maulid Nabi Muhammad SAW',
+      '2025-12-25': 'Hari Raya Natal',
+      '2025-12-26': 'Cuti Bersama Hari Raya Natal',
+      // 2026
+      '2026-01-01': 'Tahun Baru 2026 Masehi',
+      '2026-01-16': 'Isra Mikraj Nabi Muhammad SAW',
+      '2026-02-16': 'Cuti Bersama Tahun Baru Imlek',
+      '2026-02-17': 'Tahun Baru Imlek 2577 Kongzili',
+      '2026-03-18': 'Cuti Bersama Hari Suci Nyepi',
+      '2026-03-19': 'Hari Suci Nyepi Tahun Baru Saka 1948',
+      '2026-03-20': 'Hari Raya Idul Fitri 1447 H',
+      '2026-03-21': 'Hari Raya Idul Fitri 1447 H',
+      '2026-03-23': 'Cuti Bersama Idul Fitri 1447 H',
+      '2026-03-24': 'Cuti Bersama Idul Fitri 1447 H',
+      '2026-03-25': 'Cuti Bersama Idul Fitri 1447 H',
+      '2026-04-03': 'Wafat Yesus Kristus',
+      '2026-04-05': 'Kebangkitan Yesus Kristus (Paskah)',
+      '2026-05-01': 'Hari Buruh Internasional',
+      '2026-05-14': 'Kenaikan Yesus Kristus',
+      '2026-05-15': 'Cuti Bersama Kenaikan Yesus Kristus',
+      '2026-05-27': 'Hari Raya Idul Adha 1447 H',
+      '2026-05-28': 'Cuti Bersama Idul Adha 1447 H',
+      '2026-05-31': 'Hari Raya Waisak 2570 BE',
+      '2026-06-01': 'Hari Lahir Pancasila',
+      '2026-06-16': '1 Muharam Tahun Baru Islam 1448 H',
+      '2026-08-17': 'Hari Kemerdekaan Republik Indonesia',
+      '2026-08-25': 'Maulid Nabi Muhammad SAW',
+      '2026-12-24': 'Cuti Bersama Hari Raya Natal',
+      '2026-12-25': 'Hari Raya Natal',
+      // 2027
+      '2027-01-01': 'Tahun Baru 2027 Masehi',
+      '2027-01-05': 'Isra Mikraj Nabi Muhammad SAW',
+      '2027-02-06': 'Tahun Baru Imlek 2578 Kongzili',
+      '2027-03-09': 'Hari Raya Idul Fitri 1448 H',
+      '2027-03-10': 'Hari Raya Idul Fitri 1448 H',
+      '2027-03-11': 'Cuti Bersama Idul Fitri 1448 H',
+      '2027-03-12': 'Cuti Bersama Idul Fitri 1448 H',
+      '2027-03-26': 'Wafat Yesus Kristus',
+      '2027-03-28': 'Hari Suci Nyepi Tahun Baru Saka 1949',
+      '2027-05-01': 'Hari Buruh Internasional',
+      '2027-05-06': 'Kenaikan Yesus Kristus',
+      '2027-05-17': 'Hari Raya Idul Adha 1448 H',
+      '2027-05-20': 'Hari Raya Waisak 2571 BE',
+      '2027-06-01': 'Hari Lahir Pancasila',
+      '2027-06-06': '1 Muharam Tahun Baru Islam 1449 H',
+      '2027-08-15': 'Maulid Nabi Muhammad SAW',
+      '2027-08-17': 'Hari Kemerdekaan Republik Indonesia',
+      '2027-12-25': 'Hari Raya Natal'
+    };
+
     let state = {
       currentUser: null,
       activeTab: 'dashboard',
@@ -294,6 +372,9 @@
         endTime: '13:00',
         autoAlpaEnabled: true
       },
+      // Kalender Hari Libur (Sinkronisasi API + Pengaturan Manual)
+      apiHolidays: {},
+      customHolidays: {}, // { 'YYYY-MM-DD': { isHoliday: true/false, name: '...' } }
       // Pengaturan Cetak Global per Fitur
       printSettings: {
         recap: { paper: 'F4', orientation: 'landscape' },
@@ -304,6 +385,61 @@
     let html5QrScanner = null;
     let fallbackScanTimer = null;
     let fallbackVideoStream = null;
+
+    // Fungsi Cek Apakah Tanggal Merupakan Hari Libur (Minggu / Tanggal Merah / Cuti Bersama / Libur Manual) -> Kode 'L'
+    window.getHolidayInfo = (dateStr) => {
+      if (!dateStr) return null;
+      // 1. Cek pengaturan manual (override)
+      const custom = state.customHolidays?.[dateStr];
+      if (custom) {
+        if (custom.isHoliday === false) return null; // Dijadikan hari efektif masuk secara manual
+        return { code: 'L', status: 'Libur', name: custom.name || 'Libur Sekolah' };
+      }
+      // 2. Cek Kalender Libur Nasional & Cuti Bersama (API & Built-in)
+      const apiDesc = state.apiHolidays?.[dateStr];
+      if (apiDesc) {
+        return { code: 'L', status: 'Libur', name: apiDesc };
+      }
+      const builtinDesc = BUILTIN_INDONESIA_HOLIDAYS[dateStr];
+      if (builtinDesc) {
+        return { code: 'L', status: 'Libur', name: builtinDesc };
+      }
+      // 3. Cek Hari Minggu
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length === 3) {
+        const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (dt.getDay() === 0) {
+          return { code: 'L', status: 'Libur', name: 'Libur Hari Minggu' };
+        }
+      }
+      return null;
+    };
+
+    // Sinkronisasi Otomatis Kalender Libur Nasional dari API Publik Indonesia
+    async function syncNationalHolidaysFromAPI() {
+      const yearsToSync = [new Date().getFullYear(), new Date().getFullYear() + 1];
+      for (const y of yearsToSync) {
+        try {
+          const res = await fetch(`https://dayoffapi.vercel.app/api?year=${y}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              data.forEach(item => {
+                if (item.tanggal && item.keterangan) {
+                  // Format tanggal YYYY-MM-DD
+                  const parts = String(item.tanggal).split('-');
+                  if (parts.length === 3) {
+                    const normDate = `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
+                    state.apiHolidays[normDate] = item.keterangan;
+                  }
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      }
+    }
+    syncNationalHolidaysFromAPI();
 
     window.updatePrintSetting = (feature, key, value) => {
       if (!state.printSettings[feature]) state.printSettings[feature] = { paper: 'A4', orientation: 'portrait' };
@@ -524,6 +660,12 @@
         if (snap.exists()) {
           state.attendanceSettings = { ...state.attendanceSettings, ...snap.data() };
           window.checkAndRunAutoAlpa(true);
+          renderApp();
+        }
+      }));
+      unsubList.push(onSnapshot(doc(db, 'settings', 'holiday_calendar'), snap => {
+        if (snap.exists()) {
+          state.customHolidays = snap.data()?.dates || {};
           renderApp();
         }
       }));
@@ -2057,6 +2199,13 @@
       const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
       if (!cfg.autoAlpaEnabled) return 0;
 
+      // Jika hari ini adalah Hari Libur (Minggu / Tanggal Merah / Cuti Bersama / Libur Manual), jangan jalankan Auto-Alpa
+      const todayHol = window.getHolidayInfo(state.todayStr);
+      if (todayHol) {
+        if (!silent) showToast(`Hari ini (${state.todayStr}) adalah ${todayHol.name} (Kode: L). Siswa otomatis dianggap Libur.`);
+        return 0;
+      }
+
       const nowTime = new Date().toTimeString().substring(0, 5);
       if (nowTime <= cfg.endTime) {
         if (!silent) showToast(`Belum melewati jam pulang (${cfg.endTime}). Auto-Alpa aktif setelah pukul ${cfg.endTime}.`, 'error');
@@ -2066,7 +2215,7 @@
       let markedCount = 0;
       for (const st of state.students) {
         const existingRec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === state.todayStr);
-        // Jangan ubah jika sudah ada status (Hadir, Terlambat, Sakit, Izin, atau Alpa)
+        // Jangan ubah jika sudah ada status (Hadir, Terlambat, Sakit, Izin, Alpa, atau Libur)
         if (!existingRec) {
           const recordId = `att_${state.todayStr}_${st.id}`;
           const newRec = {
@@ -2100,6 +2249,12 @@
       const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
       const nowTime = new Date().toTimeString().substring(0, 5);
       const activeDate = state.selectedAttDate || state.todayStr;
+
+      const holInfo = window.getHolidayInfo(activeDate);
+      if (holInfo) {
+        return showToast(`Tanggal ${activeDate} adalah Hari Libur (${holInfo.name} - Kode L). Tidak dapat menandai Alpa otomatis pada hari libur!`, 'error');
+      }
+
       const effClass = state.filterAttClass;
       const targetStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
 
@@ -2136,6 +2291,101 @@
       }
     };
 
+    // Fungsi Pengaturan Manual Hari Libur (Kode L) atau Jadikan Hari Efektif Masuk
+    window.setDateHolidayManual = async (dateStr, isHoliday = true, customName = '') => {
+      const targetDate = dateStr || state.selectedAttDate || state.todayStr;
+      if (!state.customHolidays) state.customHolidays = {};
+
+      if (isHoliday) {
+        const desc = customName || 'Libur Sekolah / Cuti Bersama';
+        state.customHolidays[targetDate] = { isHoliday: true, name: desc };
+        // Hapus catatan Auto-Alpa pada tanggal tersebut jika sebelumnya sempat ditandai Alpa otomatis
+        const toRemoveIds = [];
+        state.attendanceRecords = state.attendanceRecords.filter(r => {
+          if (r.date === targetDate && (r.status === 'Alpa' || r.status === 'Libur')) {
+            toRemoveIds.push(r.id);
+            return false;
+          }
+          return true;
+        });
+        if (!IS_PREVIEW && db) {
+          for (const rid of toRemoveIds) {
+            try { await deleteDoc(doc(db, 'attendance', rid)); } catch {}
+          }
+        }
+        showToast(`Tanggal ${targetDate} ditetapkan sebagai Hari Libur (Kode: L — ${desc}). Otomatis seluruh siswa dianggap Libur!`);
+      } else {
+        state.customHolidays[targetDate] = { isHoliday: false, name: 'Hari Efektif Masuk' };
+        // Hapus status Libur manual pada tanggal tersebut jika ada
+        state.attendanceRecords = state.attendanceRecords.filter(r => !(r.date === targetDate && r.status === 'Libur'));
+        showToast(`Tanggal ${targetDate} dijadikan Hari Efektif Masuk Sekolah.`);
+      }
+
+      if (!IS_PREVIEW && db) {
+        try {
+          await setDoc(doc(db, 'settings', 'holiday_calendar'), { dates: state.customHolidays });
+        } catch {}
+      }
+      renderApp();
+    };
+
+    window.saveCustomHolidayRange = async (e) => {
+      e.preventDefault();
+      const startStr = document.getElementById('hol-start-date')?.value;
+      const endStr = document.getElementById('hol-end-date')?.value || startStr;
+      const desc = document.getElementById('hol-desc')?.value?.trim() || 'Libur Sekolah / Tanggal Merah';
+      if (!startStr) return showToast('Pilih tanggal mulai libur!', 'error');
+
+      const sParts = startStr.split('-').map(Number);
+      const eParts = endStr.split('-').map(Number);
+      let cur = new Date(sParts[0], sParts[1] - 1, sParts[2]);
+      const endDt = new Date(eParts[0], eParts[1] - 1, eParts[2]);
+
+      if (cur > endDt) return showToast('Tanggal selesai tidak boleh sebelum tanggal mulai!', 'error');
+
+      if (!state.customHolidays) state.customHolidays = {};
+      let countDays = 0;
+      while (cur <= endDt && countDays < 120) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, '0');
+        const d = String(cur.getDate()).padStart(2, '0');
+        const key = `${y}-${m}-${d}`;
+        state.customHolidays[key] = { isHoliday: true, name: desc };
+        state.attendanceRecords = state.attendanceRecords.filter(r => !(r.date === key && r.status === 'Alpa'));
+        cur.setDate(cur.getDate() + 1);
+        countDays++;
+      }
+
+      if (!IS_PREVIEW && db) {
+        try {
+          await setDoc(doc(db, 'settings', 'holiday_calendar'), { dates: state.customHolidays });
+        } catch {}
+      }
+
+      const modal = document.getElementById('modal-holiday-manager');
+      if (modal) modal.classList.add('hidden');
+      showToast(`Berhasil menambahkan ${countDays} hari libur (${desc} - Kode L)!`);
+      renderApp();
+    };
+
+    window.removeCustomHolidayDate = async (dateKey) => {
+      if (state.customHolidays && state.customHolidays[dateKey]) {
+        delete state.customHolidays[dateKey];
+        if (!IS_PREVIEW && db) {
+          try {
+            await setDoc(doc(db, 'settings', 'holiday_calendar'), { dates: state.customHolidays });
+          } catch {}
+        }
+        showToast(`Pengaturan manual tanggal ${dateKey} dihapus.`);
+        renderApp();
+      }
+    };
+
+    window.openHolidayManagerModal = () => {
+      const modal = document.getElementById('modal-holiday-manager');
+      if (modal) modal.classList.remove('hidden');
+    };
+
     window.updateAttDate = (val) => {
       if (!val) return;
       state.selectedAttDate = val;
@@ -2164,9 +2414,10 @@
       const nowTime = new Date().toTimeString().substring(0, 5);
       const activeDate = state.selectedAttDate || state.todayStr;
       const isToday = activeDate === state.todayStr;
+      const holidayInfo = window.getHolidayInfo(activeDate);
 
-      // Jalankan pengecekan otomatis hanya untuk hari ini jika sudah lewat jam pulang dan autoAlpaEnabled aktif
-      if (isToday && cfg.autoAlpaEnabled && nowTime > cfg.endTime) {
+      // Jalankan pengecekan otomatis hanya untuk hari ini jika BUKAN hari libur, sudah lewat jam pulang, dan autoAlpaEnabled aktif
+      if (isToday && !holidayInfo && cfg.autoAlpaEnabled && nowTime > cfg.endTime) {
         state.students.forEach(st => {
           const hasRec = state.attendanceRecords.some(r => r.studentId === st.id && r.date === state.todayStr);
           if (!hasRec) {
@@ -2194,7 +2445,9 @@
       const visStudents = state.students.filter(s => effClass === 'Semua' || s.classId === effClass);
 
       let currentPeriodBadge = '';
-      if (!isToday) {
+      if (holidayInfo) {
+        currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px]">🏖️ HARI LIBUR (Kode: L) — ${holidayInfo.name}</span>`;
+      } else if (!isToday) {
         currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-300 font-bold text-[11px]">📅 Mode Edit Tanggal: ${activeDate}</span>`;
       } else if (nowTime < cfg.startTime) {
         currentPeriodBadge = `<span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]">⏳ Belum Masuk (${nowTime})</span>`;
@@ -2210,13 +2463,18 @@
         ? `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">Belum ada murid pada filter kelas ini.</td></tr>`
         : visStudents.map((st, idx) => {
             const rec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === activeDate);
-            const stText = rec?.status || 'Belum Presensi';
+            const effectiveStatus = rec?.status || (holidayInfo ? 'Libur' : 'Belum Presensi');
             const badgeColor =
-              stText === 'Hadir' ? 'bg-emerald-100 text-emerald-800' :
-              stText === 'Terlambat' ? 'bg-amber-100 text-amber-800' :
-              stText === 'Sakit' ? 'bg-blue-100 text-blue-800' :
-              stText === 'Izin' ? 'bg-indigo-100 text-indigo-800' :
-              stText === 'Alpa' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600';
+              effectiveStatus === 'Hadir' ? 'bg-emerald-100 text-emerald-800' :
+              effectiveStatus === 'Terlambat' ? 'bg-amber-100 text-amber-800' :
+              effectiveStatus === 'Sakit' ? 'bg-blue-100 text-blue-800' :
+              effectiveStatus === 'Izin' ? 'bg-indigo-100 text-indigo-800' :
+              effectiveStatus === 'Libur' ? 'bg-rose-100 text-rose-700 border border-rose-300' :
+              effectiveStatus === 'Alpa' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600';
+
+            const statusDisplayLabel = effectiveStatus === 'Libur' ? 'Libur (L)' : effectiveStatus;
+            const subMethodText = rec?.method || (holidayInfo ? holidayInfo.name : '');
+
             return `
               <tr class="border-b border-slate-100 hover:bg-slate-50">
                 <td class="p-3">${idx + 1}</td>
@@ -2224,20 +2482,34 @@
                 <td class="p-3 font-bold text-blue-700">${st.classId}</td>
                 <td class="p-3 font-mono">${st.nisn}</td>
                 <td class="p-3">
-                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${stText}</span>
-                  ${rec?.method ? `<span class="block text-[9px] text-slate-400 mt-0.5">${rec.method}</span>` : ''}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${statusDisplayLabel}</span>
+                  ${subMethodText ? `<span class="block text-[9px] text-slate-400 mt-0.5">${subMethodText}</span>` : ''}
                 </td>
-                <td class="p-3 font-mono">${rec?.time || '-'}</td>
+                <td class="p-3 font-mono">${rec?.time || (effectiveStatus === 'Libur' ? 'LIBUR' : '-')}</td>
                 <td class="p-3 text-center">
                   <div class="flex justify-center gap-1">
-                    ${['Hadir','Terlambat','Sakit','Izin','Alpa'].map(opt => `
-                      <button onclick="window.recordAttendance('${st.nisn}', '${opt}', 'Klik Manual', true)" title="Set ${opt}" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${rec?.status === opt ? 'bg-slate-900 text-white border-slate-900' : 'bg-white hover:bg-slate-100 text-slate-700'}">${opt[0]}</button>
+                    ${[
+                      { label: 'Hadir', code: 'H' },
+                      { label: 'Terlambat', code: 'T' },
+                      { label: 'Sakit', code: 'S' },
+                      { label: 'Izin', code: 'I' },
+                      { label: 'Alpa', code: 'A' },
+                      { label: 'Libur', code: 'L' }
+                    ].map(opt => `
+                      <button onclick="window.recordAttendance('${st.nisn}', '${opt.label}', 'Klik Manual', true)" title="Set ${opt.label} (${opt.code})" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${effectiveStatus === opt.label ? (opt.code === 'L' ? 'bg-rose-600 text-white border-rose-600' : 'bg-slate-900 text-white border-slate-900') : 'bg-white hover:bg-slate-100 text-slate-700'}">${opt.code}</button>
                     `).join('')}
                   </div>
                 </td>
               </tr>
             `;
           }).join('');
+
+      // Daftar tanggal merah/libur terdekat & custom
+      const customHolidayEntries = Object.entries(state.customHolidays || {}).sort((a, b) => a[0].localeCompare(b[0]));
+      const activeMonthPrefix = activeDate.substring(0, 7);
+      const monthBuiltinHolidays = Object.entries({ ...BUILTIN_INDONESIA_HOLIDAYS, ...state.apiHolidays })
+        .filter(([dtKey]) => dtKey.startsWith(activeMonthPrefix))
+        .sort((a, b) => a[0].localeCompare(b[0]));
 
       return `
         <div class="space-y-4">
@@ -2247,7 +2519,7 @@
                 <h3 class="font-black text-base">Presensi Harian Siswa (${effClass})</h3>
                 ${currentPeriodBadge}
               </div>
-              <p class="text-xs text-slate-500">Pilih tanggal (bisa kembali ke tanggal sebelumnya), filter kelas, atau klik tombol cepat H/T/S/I/A untuk mengubah kehadiran.</p>
+              <p class="text-xs text-slate-500">Pilih tanggal, filter kelas, atau klik tombol cepat <b>H / T / S / I / A / L (Libur)</b> untuk mengubah kehadiran.</p>
             </div>
             <div class="flex flex-wrap items-center justify-center gap-2">
               <!-- Pemilih Tanggal & Navigasi Tanggal Sebelumnya -->
@@ -2272,11 +2544,42 @@
             </div>
           </div>
 
+          <!-- BAR PENGATURAN HARI LIBUR OTOMATIS & MANUAL (KODE: L) -->
+          <div class="p-4 rounded-2xl border ${holidayInfo ? 'bg-rose-50 border-rose-200' : 'bg-amber-50/70 border-amber-200'} flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2.5">
+              <span class="text-lg">${holidayInfo ? '🏖️' : '🗓️'}</span>
+              <div>
+                <div class="font-black ${holidayInfo ? 'text-rose-900' : 'text-amber-950'}">
+                  ${holidayInfo
+                    ? `Tanggal ${activeDate} adalah HARI LIBUR (Kode: L) — ${holidayInfo.name}`
+                    : `Kalender Hari Libur Otomatis & Manual (${activeDate} : Hari Efektif Sekolah)`}
+                </div>
+                <p class="text-[11px] text-slate-600">
+                  Hari Minggu, Tanggal Merah Nasional, dan Cuti Bersama otomatis dianggap <b>Libur (Kode: L)</b> dan tidak ditandai Alpa.
+                </p>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              ${holidayInfo ? `
+                <button type="button" onclick="window.setDateHolidayManual('${activeDate}', false)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] cursor-pointer shadow-2xs">
+                  🔄 Jadikan Hari Masuk Sekolah
+                </button>
+              ` : `
+                <button type="button" onclick="window.setDateHolidayManual('${activeDate}', true, 'Libur Sekolah / Cuti Bersama')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-[11px] cursor-pointer shadow-2xs">
+                  🏖️ Set Tanggal Ini Libur (Kode: L)
+                </button>
+              `}
+              <button type="button" onclick="window.openHolidayManagerModal()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl font-bold text-[11px] cursor-pointer shadow-2xs">
+                🗓️ Kelola Kalender Libur (L)
+              </button>
+            </div>
+          </div>
+
           ${!isToday ? `
             <div class="bg-purple-50 border border-purple-200 px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
               <div class="flex items-center gap-2 text-purple-900">
                 <span>🗓️</span>
-                <span>Anda sedang membuka data presensi tanggal <b>${activeDate}</b>. Klik tombol <b>H / T / S / I / A</b> pada tabel di bawah untuk memperbaiki status siswa yang lupa absen.</span>
+                <span>Anda sedang membuka data presensi tanggal <b>${activeDate}</b>. Klik tombol <b>H / T / S / I / A / L</b> pada tabel di bawah untuk memperbaiki status kehadiran siswa.</span>
               </div>
               <button type="button" onclick="window.resetAttDateToday()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-[11px] cursor-pointer">Kembali ke Hari Ini (${state.todayStr})</button>
             </div>
@@ -2289,7 +2592,7 @@
                 <span class="text-sm">⏰</span>
                 <div>
                   <h4 class="text-xs font-black text-blue-950">Pengaturan Jam Masuk, Batas Terlambat & Jam Pulang (Otomatis)</h4>
-                  <p class="text-[11px] text-slate-600">Siswa yang sudah diset <b>Sakit (S)</b> atau <b>Izin (I)</b> di awal akan dikecualikan dan tidak diubah menjadi Alpa/Telat.</p>
+                  <p class="text-[11px] text-slate-600">Siswa yang sudah diset <b>Sakit (S)</b>, <b>Izin (I)</b>, atau pada <b>Hari Libur (L)</b> dikecualikan dan tidak diubah menjadi Alpa/Telat.</p>
                 </div>
               </div>
               <button type="button" onclick="window.forceRunAutoAlpaNow()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-bold cursor-pointer shadow-2xs">
@@ -2325,10 +2628,83 @@
           <div class="bg-white p-6 rounded-3xl border border-slate-200 overflow-x-auto">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 font-bold text-slate-700">
-                <tr><th class="p-3">No</th><th class="p-3">Nama Siswa</th><th class="p-3">Kelas</th><th class="p-3">NISN</th><th class="p-3">Status (${activeDate})</th><th class="p-3">Waktu</th><th class="p-3 text-center">Ubah Status Cepat</th></tr>
+                <tr><th class="p-3">No</th><th class="p-3">Nama Siswa</th><th class="p-3">Kelas</th><th class="p-3">NISN</th><th class="p-3">Status (${activeDate})</th><th class="p-3">Waktu</th><th class="p-3 text-center">Ubah Status Cepat (H/T/S/I/A/L)</th></tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
+          </div>
+
+          <!-- MODAL KELOLA KALENDER HARI LIBUR MANUAL & OTOMATIS (KODE L) -->
+          <div id="modal-holiday-manager" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white max-w-lg w-full rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 text-xs">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h3 class="font-black text-base text-slate-900">🗓️ Pengaturan Kalender Hari Libur (Kode: L)</h3>
+                  <p class="text-[11px] text-slate-500">Hari Minggu, Tanggal Merah & Cuti Bersama otomatis berkode <b>L</b>. Tambahkan libur sekolah/semester di bawah ini.</p>
+                </div>
+                <button type="button" onclick="document.getElementById('modal-holiday-manager').classList.add('hidden')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold cursor-pointer">Tutup</button>
+              </div>
+
+              <form onsubmit="window.saveCustomHolidayRange(event)" class="p-4 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3">
+                <div class="font-bold text-rose-900">➕ Tambah Tanggal / Rentang Libur Sekolah Manual (Kode: L)</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-700">Mulai Tanggal *</label>
+                    <input type="date" id="hol-start-date" required value="${activeDate}" class="w-full p-2 border rounded-xl bg-white font-bold" />
+                  </div>
+                  <div>
+                    <label class="font-bold block mb-1 text-slate-700">Sampai Tanggal *</label>
+                    <input type="date" id="hol-end-date" required value="${activeDate}" class="w-full p-2 border rounded-xl bg-white font-bold" />
+                  </div>
+                </div>
+                <div>
+                  <label class="font-bold block mb-1 text-slate-700">Keterangan Hari Libur *</label>
+                  <input type="text" id="hol-desc" required placeholder="Contoh: Libur Semester Ganjil / Cuti Bersama / Kegiatan Sekolah" class="w-full p-2.5 border rounded-xl bg-white" />
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold cursor-pointer shadow-xs">
+                  💾 Simpan ke Kalender Libur (Kode: L)
+                </button>
+              </form>
+
+              <div class="space-y-2">
+                <div class="font-bold text-slate-800">📌 Daftar Pengaturan Libur Manual Anda:</div>
+                ${customHolidayEntries.length === 0
+                  ? `<div class="p-3 rounded-xl bg-slate-50 border text-slate-400 text-center">Belum ada tanggal libur manual tambahan.</div>`
+                  : `<div class="max-h-40 overflow-y-auto divide-y border rounded-xl">
+                      ${customHolidayEntries.map(([dtKey, info]) => `
+                        <div class="p-2.5 flex items-center justify-between bg-white">
+                          <div>
+                            <span class="font-mono font-bold text-slate-900 mr-2">${dtKey}</span>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${info.isHoliday ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">
+                              ${info.isHoliday ? 'Libur (L)' : 'Hari Masuk'}
+                            </span>
+                            <span class="text-slate-600 ml-1">${info.name || ''}</span>
+                          </div>
+                          <button type="button" onclick="window.removeCustomHolidayDate('${dtKey}')" class="px-2 py-1 bg-slate-100 hover:bg-rose-100 text-rose-600 rounded-lg font-bold text-[10px] cursor-pointer">Hapus</button>
+                        </div>
+                      `).join('')}
+                    </div>`
+                }
+              </div>
+
+              <div class="space-y-2 pt-1">
+                <div class="font-bold text-slate-800">🇮🇩 Kalender Libur Nasional & Cuti Bersama Bulan Ini (${activeMonthPrefix}):</div>
+                ${monthBuiltinHolidays.length === 0
+                  ? `<div class="p-3 rounded-xl bg-slate-50 border text-slate-500 text-center">Tidak ada tanggal merah nasional selain Hari Minggu pada bulan ${activeMonthPrefix}.</div>`
+                  : `<div class="max-h-36 overflow-y-auto divide-y border rounded-xl bg-slate-50">
+                      ${monthBuiltinHolidays.map(([dtKey, desc]) => `
+                        <div class="p-2 flex items-center justify-between">
+                          <div>
+                            <span class="font-mono font-bold text-rose-700 mr-2">${dtKey}</span>
+                            <span class="text-slate-700 font-medium">${desc}</span>
+                          </div>
+                          <span class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[10px]">Kode: L</span>
+                        </div>
+                      `).join('')}
+                    </div>`
+                }
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -2352,11 +2728,12 @@
 
       const activeDate = state.selectedAttDate || state.todayStr;
       const isToday = activeDate === state.todayStr;
+      const holidayInfo = window.getHolidayInfo(activeDate);
       const recordId = `att_${activeDate}_${st.id}`;
       const existingRec = state.attendanceRecords.find(r => r.id === recordId);
 
-      // Jika bukan klik tombol manual H/T/S/I/A secara langsung, lindungi siswa yang sudah diset Sakit atau Izin di awal
-      if (!isExplicitOverride && existingRec && (existingRec.status === 'Sakit' || existingRec.status === 'Izin')) {
+      // Jika bukan klik tombol manual secara langsung, lindungi siswa yang sudah diset Sakit, Izin, atau Libur
+      if (!isExplicitOverride && existingRec && (existingRec.status === 'Sakit' || existingRec.status === 'Izin' || existingRec.status === 'Libur')) {
         playBeep();
         return showToast(`Info: ${st.name} sudah diset "${existingRec.status}" pada ${activeDate} (dikecualikan dari absen otomatis).`);
       }
@@ -2365,10 +2742,11 @@
       const cfg = state.attendanceSettings || { startTime: '06:00', lateThreshold: '07:00', endTime: '13:00', autoAlpaEnabled: true };
 
       let finalStatus = status;
-      // Jika dipanggil dari Scan QR atau Input NISN (bukan klik paksa tombol H/T/S/I/A)
+      // Jika dipanggil dari Scan QR atau Input NISN (bukan klik paksa tombol H/T/S/I/A/L)
       if (!isExplicitOverride && (status === 'AUTO' || status === 'Hadir')) {
-        if (!isToday) {
-          // Saat mengedit tanggal sebelumnya via input NISN, langsung catat Hadir
+        if (holidayInfo) {
+          finalStatus = 'Libur';
+        } else if (!isToday) {
           finalStatus = 'Hadir';
         } else if (nowTime > cfg.endTime) {
           finalStatus = 'Alpa';
@@ -2387,8 +2765,8 @@
         classId: st.classId,
         date: activeDate,
         status: finalStatus,
-        time: isToday ? nowTime : (existingRec?.time || cfg.startTime),
-        method: !isToday && isExplicitOverride ? 'Edit Tanggal Sebelumnya' : method
+        time: finalStatus === 'Libur' ? 'LIBUR' : (isToday ? nowTime : (existingRec?.time || cfg.startTime)),
+        method: finalStatus === 'Libur' ? (holidayInfo?.name || 'Libur Manual (L)') : (!isToday && isExplicitOverride ? 'Edit Tanggal Sebelumnya' : method)
       };
 
       playBeep();
@@ -2399,7 +2777,9 @@
         await setDoc(doc(db, 'attendance', recordId), newRec);
       }
 
-      if (finalStatus === 'Terlambat' && !isExplicitOverride && isToday) {
+      if (finalStatus === 'Libur') {
+        showToast(`🏖️ ${st.name} (${activeDate}) tercatat LIBUR (Kode: L)`);
+      } else if (finalStatus === 'Terlambat' && !isExplicitOverride && isToday) {
         showToast(`⏰ ${st.name} (${st.classId}) tercatat TERLAMBAT (Absen pukul ${nowTime} > ${cfg.lateThreshold})`);
       } else if (finalStatus === 'Alpa' && !isExplicitOverride && isToday) {
         showToast(`⚠️ Lewat jam pulang (${cfg.endTime}): ${st.name} tercatat ALPA`, 'error');
@@ -2438,8 +2818,12 @@
         let colGroupHtml = `<colgroup><col style="width: ${noColPct}%;" /><col style="width: ${nameColPct}%;" />`;
         let headerDaysHtml = '';
         for (let d = 1; d <= daysInMonth; d++) {
+          const dayStr = String(d).padStart(2, '0');
+          const monthStr = String(month).padStart(2, '0');
+          const dateKey = `${year}-${monthStr}-${dayStr}`;
+          const isHol = window.getHolidayInfo(dateKey);
           colGroupHtml += `<col style="width: ${dayColPct}%;" />`;
-          headerDaysHtml += `<th class="border border-slate-600 p-0.5 text-[7.5pt]">${d}</th>`;
+          headerDaysHtml += `<th class="border border-slate-600 p-0.5 text-[7.5pt] ${isHol ? 'bg-rose-100 text-rose-700' : ''}" title="${isHol ? isHol.name : ''}">${d}</th>`;
         }
         colGroupHtml += `<col style="width: ${sumColPct}%;" /><col style="width: ${sumColPct}%;" /><col style="width: ${sumColPct}%;" /><col style="width: ${sumColPct}%;" /></colgroup>`;
 
@@ -2453,17 +2837,26 @@
                 const dayStr = String(d).padStart(2, '0');
                 const monthStr = String(month).padStart(2, '0');
                 const dateKey = `${year}-${monthStr}-${dayStr}`;
+                const holInfo = window.getHolidayInfo(dateKey);
 
                 const rec = state.attendanceRecords.find(r => r.studentId === st.id && r.date === dateKey);
                 let mark = '';
+                let cellClass = '';
                 if (rec) {
                   if (rec.status === 'Hadir') { mark = 'H'; countH++; }
                   else if (rec.status === 'Terlambat') { mark = 'T'; countH++; }
                   else if (rec.status === 'Izin') { mark = 'I'; countI++; }
                   else if (rec.status === 'Sakit') { mark = 'S'; countS++; }
-                  else if (rec.status === 'Alpa') { mark = 'A'; countA++; }
+                  else if (rec.status === 'Libur') { mark = 'L'; cellClass = 'text-rose-600 bg-rose-50/60'; }
+                  else if (rec.status === 'Alpa') {
+                    if (holInfo) { mark = 'L'; cellClass = 'text-rose-600 bg-rose-50/60'; }
+                    else { mark = 'A'; countA++; }
+                  }
+                } else if (holInfo) {
+                  mark = 'L';
+                  cellClass = 'text-rose-600 bg-rose-50/60';
                 }
-                dayCells += `<td class="border border-slate-600 p-0.5 text-center font-bold text-[7.5pt]">${mark}</td>`;
+                dayCells += `<td class="border border-slate-600 p-0.5 text-center font-bold text-[7.5pt] ${cellClass}">${mark}</td>`;
               }
 
               return `
