@@ -331,6 +331,8 @@
           title: 'Bangun Pukul 05.00 WIB',
           description: 'Merapikan tempat tidur dan persiapan salat Subuh.',
           date: new Date().toISOString().split('T')[0],
+          time: '05:12',
+          createdAt: Date.now(),
           recordedBy: 'MUHAMMAD RIZKI ADITYA',
           attachmentUrl: '', attachmentPath: '', attachmentName: '', attachmentType: '', attachmentSize: 0
         }
@@ -3681,6 +3683,51 @@
       }, 250);
     };
 
+    // Helper Format Tanggal Jurnal (Hari-Bulan-Tahun) & Ekstraksi Jam Real-Time
+    function formatJournalDateDMY(dateStr, createdAtVal, idStr) {
+      if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(String(dateStr).trim())) {
+        const [y, m, d] = String(dateStr).trim().split('-');
+        return `${d}-${m}-${y}`;
+      }
+      const ts = createdAtVal || (idStr && /^JRN_(\d{10,15})/.test(String(idStr)) ? Number(String(idStr).match(/^JRN_(\d{10,15})/)[1]) : null);
+      if (ts && !isNaN(ts)) {
+        const dt = new Date(ts);
+        const d = String(dt.getDate()).padStart(2, '0');
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const y = dt.getFullYear();
+        return `${d}-${m}-${y}`;
+      }
+      return dateStr || '-';
+    }
+
+    function formatJournalTimeReal(timeStr, createdAtVal, idStr) {
+      if (timeStr && String(timeStr).trim() !== '') {
+        return String(timeStr).trim();
+      }
+      const ts = createdAtVal || (idStr && /^JRN_(\d{10,15})/.test(String(idStr)) ? Number(String(idStr).match(/^JRN_(\d{10,15})/)[1]) : null);
+      if (ts && !isNaN(ts)) {
+        const dt = new Date(ts);
+        const hh = String(dt.getHours()).padStart(2, '0');
+        const mm = String(dt.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      }
+      return '';
+    }
+
+    function resolveJournalDriveThumbUrl(url, pathId) {
+      if (!url) return '';
+      const strUrl = String(url);
+      let driveId = pathId && !String(pathId).startsWith('mock_') ? String(pathId) : '';
+      if (!driveId) {
+        const matchD = strUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || strUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (matchD && matchD[1]) driveId = matchD[1];
+      }
+      if (driveId && (strUrl.includes('drive.google.com') || strUrl.includes('googleusercontent.com'))) {
+        return `https://drive.google.com/thumbnail?id=${driveId}&sz=w600`;
+      }
+      return strUrl;
+    }
+
     function renderJournalView() {
       const isSiswa = state.currentUser.role === 'Siswa';
       const filterClass = state.filterJournalClass;
@@ -3697,26 +3744,59 @@
       const selectedVisibleCount = visibleIds.filter(id => state.selectedJournalIds.includes(id)).length;
       const isAllVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
 
+      const categoryColors = {
+        'Bangun Pagi': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Beribadah': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'Berolahraga': 'bg-sky-50 text-sky-700 border-sky-200',
+        'Makan Sehat dan Bergizi': 'bg-teal-50 text-teal-700 border-teal-200',
+        'Gemar Belajar': 'bg-blue-50 text-blue-700 border-blue-200',
+        'Bermasyarakat': 'bg-purple-50 text-purple-700 border-purple-200',
+        'Tidur Cepat': 'bg-indigo-50 text-indigo-700 border-indigo-200'
+      };
+
       const items = list.length === 0
-        ? `<div class="col-span-full bg-white p-8 rounded-3xl border text-center text-xs text-slate-400 font-bold">Belum ada catatan jurnal karakter sesuai filter${filterDate ? ` pada tanggal ${filterDate}` : ''}.</div>`
+        ? `<div class="col-span-full bg-white p-8 rounded-3xl border text-center text-xs text-slate-400 font-bold">Belum ada catatan jurnal karakter sesuai filter${filterDate ? ` pada tanggal ${formatJournalDateDMY(filterDate)}` : ''}.</div>`
         : list.map(j => {
             const docKey = String(j.firestoreDocId || j.id);
             const isSelected = state.selectedJournalIds.includes(docKey);
+            const formattedDateDMY = formatJournalDateDMY(j.date, j.createdAt, j.id);
+            const formattedTime = formatJournalTimeReal(j.time, j.createdAt, j.id);
+            const catBadgeStyle = categoryColors[j.category] || 'bg-blue-50 text-blue-700 border-blue-200';
+            const studentInitials = String(j.studentName || 'S').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+
             let attachmentBadgeHtml = '';
             if (j.attachmentUrl) {
               const isPdf = j.attachmentType === 'application/pdf' || (j.attachmentName && j.attachmentName.toLowerCase().endsWith('.pdf'));
               if (isPdf) {
                 attachmentBadgeHtml = `
-                  <a href="${j.attachmentUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold border border-rose-200 transition-all cursor-pointer">
-                    📄 <span>${j.attachmentName || 'Dokumen PDF'}</span> (Buka/Unduh)
-                  </a>
+                  <div class="pt-1">
+                    <a href="${j.attachmentUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold border border-rose-200 transition-all cursor-pointer shadow-2xs">
+                      <span>📄</span>
+                      <span class="truncate max-w-[180px]">${j.attachmentName || 'Dokumen Bukti PDF'}</span>
+                      <span class="text-[10px] underline ml-1">Buka</span>
+                    </a>
+                  </div>
                 `;
               } else {
+                const thumbSrc = resolveJournalDriveThumbUrl(j.attachmentUrl, j.attachmentPath);
                 attachmentBadgeHtml = `
-                  <div class="space-y-1">
-                    <span class="text-[10px] font-bold text-slate-500 block">Lampiran Bukti Kegiatan:</span>
-                    <a href="${j.attachmentUrl}" target="_blank" class="block w-28 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-2xs hover:opacity-90 transition-all">
-                      <img src="${j.attachmentUrl}" alt="Bukti Kegiatan" class="w-full h-full object-cover" />
+                  <div class="space-y-1.5 pt-1">
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">📎 Lampiran Bukti Kegiatan</span>
+                    <a href="${j.attachmentUrl}" target="_blank" rel="noopener noreferrer" class="group relative block w-full h-36 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-2xs hover:border-blue-400 transition-all">
+                      <img
+                        src="${thumbSrc}"
+                        alt="Bukti Kegiatan"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');"
+                      />
+                      <div class="hidden w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50/70 text-blue-700 p-3 text-center">
+                        <span class="text-2xl mb-1">🖼️</span>
+                        <span class="text-[11px] font-bold">Lihat Foto Bukti Kegiatan</span>
+                        <span class="text-[9px] text-slate-500 mt-0.5">Klik untuk membuka ukuran penuh</span>
+                      </div>
+                      <div class="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-slate-900/75 backdrop-blur-xs text-white text-[10px] font-semibold opacity-90 group-hover:bg-blue-600 transition-all">
+                        🔍 Lihat Bukti
+                      </div>
                     </a>
                   </div>
                 `;
@@ -3724,22 +3804,41 @@
             }
 
             return `
-              <div class="bg-white rounded-3xl border ${isSelected ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/10' : 'border-slate-200'} p-5 space-y-3 flex flex-col justify-between transition-all">
+              <div class="bg-white rounded-2xl border ${isSelected ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/10' : 'border-slate-200/90 hover:border-blue-300'} p-5 shadow-2xs hover:shadow-md flex flex-col justify-between transition-all gap-4">
                 <div class="space-y-3">
-                  <div class="flex justify-between items-center text-[11px]">
+                  <!-- Baris Atas: Checkbox + Kategori & Tanggal (DD-MM-YYYY) + Jam Pengiriman -->
+                  <div class="flex flex-wrap justify-between items-center gap-2">
                     <label class="flex items-center gap-2 cursor-pointer select-none">
                       <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.toggleSelectJournal('${docKey}', this.checked)" class="w-4 h-4 accent-rose-600 rounded cursor-pointer" />
-                      <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">${j.category}</span>
+                      <span class="px-2.5 py-1 border rounded-full text-[11px] font-bold ${catBadgeStyle}">${j.category}</span>
                     </label>
-                    <span class="text-slate-400 font-mono">${j.date}</span>
+                    <div class="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 bg-slate-100/90 px-2.5 py-1 rounded-lg border border-slate-200/80" title="Waktu Pengiriman Jurnal">
+                      <span>📅 ${formattedDateDMY}</span>
+                      ${formattedTime ? `<span class="text-slate-300">•</span><span class="text-blue-700 font-bold">⏰ ${formattedTime} WIB</span>` : ''}
+                    </div>
                   </div>
-                  <h4 class="font-black text-sm text-slate-900">${j.title}</h4>
-                  <p class="text-xs text-slate-600 leading-relaxed">${j.description}</p>
+
+                  <!-- Judul & Deskripsi Jurnal -->
+                  <div class="space-y-1">
+                    <h4 class="font-bold text-sm text-slate-900 leading-snug">${j.title}</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">${j.description}</p>
+                  </div>
+
                   ${attachmentBadgeHtml}
                 </div>
-                <div class="pt-3 border-t flex items-center justify-between text-xs">
-                  <span class="font-bold text-slate-800">${j.studentName} (${j.classId})</span>
-                  <button type="button" onclick="window.deleteJournal('${docKey}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-2xs">
+
+                <!-- Footer Kartu: Info Siswa & Tombol Hapus -->
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-2xs">
+                      ${studentInitials}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-xs text-slate-900 truncate">${j.studentName}</div>
+                      <div class="text-[10px] font-semibold text-blue-600">${j.classId}</div>
+                    </div>
+                  </div>
+                  <button type="button" onclick="window.deleteJournal('${docKey}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1 shrink-0 shadow-2xs">
                     🗑️ Hapus
                   </button>
                 </div>
@@ -4017,7 +4116,11 @@
       const isSiswa = state.currentUser.role === 'Siswa';
       const stId = isSiswa ? state.currentUser.id : document.getElementById('jr-student')?.value;
       const st = state.students.find(s => s.id === stId) || { id: stId, name: state.currentUser.name, classId: state.currentUser.classId || 'Kelas 1' };
-      const id = 'JRN_' + Date.now();
+      const nowObj = new Date();
+      const nowTimestamp = nowObj.getTime();
+      const realDateYMD = `${nowObj.getFullYear()}-${String(nowObj.getMonth() + 1).padStart(2, '0')}-${String(nowObj.getDate()).padStart(2, '0')}`;
+      const realTimeHM = `${String(nowObj.getHours()).padStart(2, '0')}:${String(nowObj.getMinutes()).padStart(2, '0')}`;
+      const id = 'JRN_' + nowTimestamp;
 
       let attachmentUrl = '';
       let attachmentPath = '';
@@ -4058,7 +4161,7 @@
             }
           } else {
             attachmentUrl = state.tempAttachment.previewUrl;
-            attachmentPath = 'mock_drive_id_' + Date.now();
+            attachmentPath = 'mock_drive_id_' + nowTimestamp;
           }
         }
 
@@ -4070,7 +4173,9 @@
           category: document.getElementById('jr-category').value,
           title: document.getElementById('jr-title').value.trim(),
           description: document.getElementById('jr-desc').value.trim(),
-          date: state.todayStr,
+          date: realDateYMD,
+          time: realTimeHM,
+          createdAt: nowTimestamp,
           recordedBy: state.currentUser.name,
           attachmentUrl,
           attachmentPath,
@@ -4086,7 +4191,7 @@
         }
 
         document.getElementById('modal-add-journal').classList.add('hidden');
-        showToast('Jurnal karakter & lampiran berhasil disimpan!');
+        showToast(`Jurnal berhasil dikirim (${formatJournalDateDMY(realDateYMD)} pukul ${realTimeHM} WIB)!`);
         renderApp();
       } catch (err) {
         console.error("Gagal menyimpan jurnal:", err);
