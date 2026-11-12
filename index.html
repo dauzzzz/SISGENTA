@@ -169,7 +169,6 @@
     const IS_PREVIEW = false;
 
     const firebaseConfig = {
- apiKey: "AIzaSyBh3rDToKKyTAFLh02RU3R4sQE96R-IngU",
   authDomain: "sisgenta.firebaseapp.com",
   projectId: "sisgenta",
   storageBucket: "sisgenta.firebasestorage.app",
@@ -289,10 +288,19 @@
       '2027-12-25': 'Hari Raya Natal'
     };
 
+    // Fungsi Tanggal Lokal (WIB / Zona Waktu Perangkat) agar tidak mundur 1 hari sebelum pukul 07.00 pagi
+    function getLocalTodayStr() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
     let state = {
       currentUser: null,
       activeTab: 'dashboard',
-      todayStr: new Date().toISOString().split('T')[0],
+      todayStr: getLocalTodayStr(),
       schoolInfo: IS_PREVIEW ? {
         name: 'SDN Gedongboyountung',
         npsn: '20506021',
@@ -319,7 +327,7 @@
         { id: 'S401', name: 'SAFFANA ALYA', nisn: '3163901588', nis: '20506021', classId: 'Kelas 4', gender: 'Perempuan', parentName: 'ARIF FATMAWATI', address: 'Gedongboyountung', password: '123456', photo: '' }
       ] : [],
       attendanceRecords: IS_PREVIEW ? [
-        { id: 'att_demo_1', studentId: 'S101', studentName: 'MUHAMMAD RIZKI ADITYA', nisn: '3195240210', classId: 'Kelas 1', date: new Date().toISOString().split('T')[0], status: 'Hadir', time: '06:45', method: 'QR Scan' }
+        { id: 'att_demo_1', studentId: 'S101', studentName: 'MUHAMMAD RIZKI ADITYA', nisn: '3195240210', classId: 'Kelas 1', date: getLocalTodayStr(), status: 'Hadir', time: '06:45', method: 'QR Scan' }
       ] : [],
       journals: IS_PREVIEW ? [
         {
@@ -330,7 +338,7 @@
           category: 'Bangun Pagi',
           title: 'Bangun Pukul 05.00 WIB',
           description: 'Merapikan tempat tidur dan persiapan salat Subuh.',
-          date: new Date().toISOString().split('T')[0],
+          date: getLocalTodayStr(),
           time: '05:12',
           createdAt: Date.now(),
           recordedBy: 'MUHAMMAD RIZKI ADITYA',
@@ -348,7 +356,7 @@
       filterTeacherSearch: '',
       teacherImportPreview: [],
       filterAttClass: 'Semua',
-      selectedAttDate: new Date().toISOString().split('T')[0],
+      selectedAttDate: getLocalTodayStr(),
       filterRecapClass: 'Semua',
       filterRecapPeriod: 'Per Bulan',
       filterRecapType: 'Detail Harian',
@@ -2410,6 +2418,7 @@
     };
 
     window.resetAttDateToday = () => {
+      state.todayStr = getLocalTodayStr();
       state.selectedAttDate = state.todayStr;
       renderApp();
     };
@@ -3862,7 +3871,7 @@
               <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                 <span class="text-[11px] font-bold text-slate-600 pl-2">📅 Tanggal:</span>
                 <input type="date" value="${filterDate}" onchange="window.updateJournalDateFilter(this.value)" class="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 cursor-pointer" />
-                <button type="button" onclick="window.updateJournalDateFilter('${state.todayStr}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${filterDate === state.todayStr ? 'bg-blue-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}">Hari Ini</button>
+                <button type="button" onclick="window.setJournalFilterToday()" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${filterDate === state.todayStr ? 'bg-blue-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}">Hari Ini</button>
                 ${filterDate ? `<button type="button" onclick="window.updateJournalDateFilter('')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold cursor-pointer">Semua Tanggal</button>` : ''}
               </div>
               <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[11px] font-bold border border-blue-200">${list.length} Jurnal</span>
@@ -3976,7 +3985,16 @@
     }
 
     window.updateJournalClassFilter = (v) => { state.filterJournalClass = v; renderApp(); };
-    window.updateJournalDateFilter = (v) => { state.filterJournalDate = v || ''; renderApp(); };
+    window.updateJournalDateFilter = (v) => {
+      state.todayStr = getLocalTodayStr();
+      state.filterJournalDate = v || '';
+      renderApp();
+    };
+    window.setJournalFilterToday = () => {
+      state.todayStr = getLocalTodayStr();
+      state.filterJournalDate = state.todayStr;
+      renderApp();
+    };
 
     window.toggleSelectJournal = (id, checked) => {
       const target = String(id);
@@ -4453,6 +4471,7 @@
     };
 
     function renderApp() {
+      state.todayStr = getLocalTodayStr();
       const root = document.getElementById('root-view');
       if (!state.currentUser) {
         root.innerHTML = renderLogin();
