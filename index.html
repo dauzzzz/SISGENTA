@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistem Administrasi & Presensi - SDN Gedongboyountung</title>
-  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22SDN%20Gedongboyountung%20App%22%2C%22short_name%22%3A%22SDN%20Gedong%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%232563eb%22%7D" />
+  <meta name="theme-color" content="#1e62d0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SISGENTA" />
+  <title>SISGENTA - Sistem Administrasi & Presensi SDN Gedongboyountung</title>
+  <link id="dynamic-pwa-manifest" rel="manifest" href="manifest.json" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -165,31 +170,152 @@
   </div>
 
   <script type="module">
-    const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwukd1IjMhjaO4cI_nlKHkSq8ym391sg62hZTvFkcwOn9EhLu0Ly78QOO160v58SeBJSA/exec";
-    const IS_PREVIEW = false;
+    const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_SISGENTA_DRIVE_UPLOAD/exec";
+    const IS_PREVIEW = true;
 
     const firebaseConfig = {
- apiKey: "AIzaSyBh3rDToKKyTAFLh02RU3R4sQE96R-IngU",
-  authDomain: "sisgenta.firebaseapp.com",
-  projectId: "sisgenta",
-  storageBucket: "sisgenta.firebasestorage.app",
-  messagingSenderId: "79640623264",
-  appId: "1:79640623264:web:a9a392dcd047df7d0171c5"
+      apiKey: "AIzaSyD-SISGENTA-FALLBACK",
+      authDomain: "sdn-gedongboyountung.firebaseapp.com",
+      projectId: "sdn-gedongboyountung",
+      storageBucket: "sdn-gedongboyountung.appspot.com"
     };
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDocs, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    if ('serviceWorker' in navigator) {
-      const swCode = `
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-        self.addEventListener('fetch', e => {});
-      `;
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    // ============================================================================
+    // KONFIGURASI PWA (PROGRESSIVE WEB APP) AGAR BISA DI-INSTALL DI CHROME HP/PC
+    // ============================================================================
+    let deferredPwaPrompt = null;
+
+    function generatePwaIconDataUrl(size = 192) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background biru elegan dengan sudut membulat
+      const grad = ctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0, '#1e3a8a');
+      grad.addColorStop(1, '#1e62d0');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(0, 0, size, size, size * 0.2) : ctx.rect(0, 0, size, size);
+      ctx.fill();
+
+      // Lingkaran aksen emas di tengah
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = Math.max(4, size * 0.035);
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size * 0.36, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Teks Ikon SISGENTA
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `900 ${Math.round(size * 0.22)}px Poppins, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('SDN', size / 2, size * 0.43);
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = `800 ${Math.round(size * 0.11)}px Poppins, sans-serif`;
+      ctx.fillText('SISGENTA', size / 2, size * 0.63);
+
+      return canvas.toDataURL('image/png');
     }
+
+    function setupDynamicPwaManifest() {
+      try {
+        const icon192 = generatePwaIconDataUrl(192);
+        const icon512 = generatePwaIconDataUrl(512);
+
+        // Pasang apple-touch-icon & favicon
+        let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+        if (!appleIcon) {
+          appleIcon = document.createElement('link');
+          appleIcon.rel = 'apple-touch-icon';
+          document.head.appendChild(appleIcon);
+        }
+        appleIcon.href = icon192;
+
+        let favIcon = document.querySelector('link[rel="icon"]');
+        if (!favIcon) {
+          favIcon = document.createElement('link');
+          favIcon.rel = 'icon';
+          favIcon.type = 'image/png';
+          document.head.appendChild(favIcon);
+        }
+        favIcon.href = icon192;
+
+        const startUrl = window.location.origin + window.location.pathname;
+        const manifestObj = {
+          id: startUrl,
+          name: "SISGENTA - SDN Gedongboyountung",
+          short_name: "SISGENTA",
+          description: "Sistem Informasi Administrasi, Presensi QR & Jurnal Karakter SDN Gedongboyountung",
+          start_url: startUrl,
+          scope: startUrl,
+          display: "standalone",
+          orientation: "portrait-primary",
+          background_color: "#1e293b",
+          theme_color: "#1e62d0",
+          icons: [
+            { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: icon192, sizes: "192x192", type: "image/png", purpose: "maskable" },
+            { src: icon512, sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: icon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
+          ]
+        };
+
+        const manifestJson = JSON.stringify(manifestObj);
+        const manifestBlob = new Blob([manifestJson], { type: 'application/manifest+json' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        const linkEl = document.getElementById('dynamic-pwa-manifest');
+        if (linkEl) linkEl.setAttribute('href', manifestUrl);
+      } catch (e) {
+        console.warn('Gagal menyusun manifest PWA:', e);
+      }
+    }
+
+    setupDynamicPwaManifest();
+
+    // Registrasi Service Worker jika tersedia file sw.js di hosting (Vercel/GitHub Pages)
+    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPwaPrompt = e;
+      state.canInstallPwa = true;
+      renderApp();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPwaPrompt = null;
+      state.canInstallPwa = false;
+      window.showToast('🎉 Aplikasi SISGENTA berhasil di-install di perangkat Anda!');
+      renderApp();
+    });
+
+    window.triggerInstallPwa = async () => {
+      if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        const { outcome } = await deferredPwaPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredPwaPrompt = null;
+          state.canInstallPwa = false;
+          window.showToast('Menginstal aplikasi SISGENTA...');
+        }
+        renderApp();
+      } else {
+        const modal = document.getElementById('modal-pwa-install-guide');
+        if (modal) modal.classList.remove('hidden');
+      }
+    };
 
     let app = null;
     let auth = null;
@@ -379,6 +505,7 @@
       tempAttachment: null,
       tempStudentPhoto: '',
       studentCameraStream: null,
+      canInstallPwa: false,
       // Pengaturan Jam Presensi (Masuk, Batas Telat, Pulang & Auto-Alpa)
       attendanceSettings: {
         startTime: '06:00',
@@ -820,7 +947,52 @@
               <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer">
                 Masuk ke Aplikasi
               </button>
+              <button type="button" onclick="window.triggerInstallPwa()" class="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-2">
+                <span>📲</span>
+                <span>Install Aplikasi SISGENTA di HP</span>
+              </button>
             </form>
+          </div>
+        </div>
+
+        ${renderPwaInstallGuideModal()}
+      `;
+    }
+
+    function renderPwaInstallGuideModal() {
+      return `
+        <div id="modal-pwa-install-guide" class="hidden fixed inset-0 bg-black/70 z-[100001] flex items-center justify-center p-4 no-print">
+          <div class="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-lg font-bold shadow-xs">📲</div>
+                <div>
+                  <h3 class="font-black text-sm text-slate-900">Install Aplikasi SISGENTA di HP</h3>
+                  <p class="text-[11px] text-slate-500">Pasang di layar utama HP agar tampil penuh seperti aplikasi Android</p>
+                </div>
+              </div>
+              <button type="button" onclick="document.getElementById('modal-pwa-install-guide').classList.add('hidden')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-600 cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-3">
+              <div class="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
+                <div class="font-black text-blue-900">🤖 Cara Install di Google Chrome Android:</div>
+                <ol class="list-decimal list-inside space-y-1.5 text-slate-700 leading-relaxed">
+                  <li>Ketuk ikon <b>Titik Tiga (⋮)</b> di pojok kanan atas browser <b>Google Chrome</b>.</li>
+                  <li>Pilih menu <b>"Tambahkan ke layar utama"</b> (<i>Add to Home screen</i>) atau <b>"Instal aplikasi"</b> (<i>Install app</i>).</li>
+                  <li>Pilih <b>Instal / Tambahkan</b>. Ikon <b>SISGENTA</b> akan langsung muncul di menu layar utama HP Anda!</li>
+                </ol>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div class="font-bold text-slate-800">🍎 Pengguna iPhone (Safari):</div>
+                <p class="text-slate-600 leading-relaxed">Ketuk tombol <b>Bagikan (Share ⬆️)</b> di bagian bawah Safari, lalu pilih <b>"Tambah ke Layar Utama"</b> (<i>Add to Home Screen</i>).</p>
+              </div>
+            </div>
+
+            <button type="button" onclick="document.getElementById('modal-pwa-install-guide').classList.add('hidden')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold cursor-pointer shadow-xs">
+              Mengerti, Tutup Panduan
+            </button>
           </div>
         </div>
       `;
@@ -4533,7 +4705,12 @@
                 <span>☰</span>
                 <span>${menus.find(m => m.id === state.activeTab)?.label || 'Dashboard'}</span>
               </div>
-              <div class="flex items-center gap-2.5 text-xs">
+              <div class="flex items-center gap-2 text-xs">
+                <button type="button" onclick="window.triggerInstallPwa()" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-semibold flex items-center gap-1 cursor-pointer shadow-2xs">
+                  <span>📲</span>
+                  <span class="hidden sm:inline">Install Aplikasi</span>
+                  <span class="sm:hidden">Install</span>
+                </button>
                 <span class="px-3 py-1 bg-white/15 rounded-full font-medium text-white">${state.todayStr}</span>
                 <button onclick="window.handleLogout()" class="md:hidden px-3 py-1 bg-rose-500 text-white rounded-full font-semibold">Keluar</button>
               </div>
@@ -4596,6 +4773,8 @@
               </div>
             </div>
           </div>
+
+          ${renderPwaInstallGuideModal()}
         </div>
       `;
     }
