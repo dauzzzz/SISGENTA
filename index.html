@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="SISGENTA" />
   <title>SISGENTA - Sistem Administrasi & Presensi SDN Gedongboyountung</title>
-  <link id="dynamic-pwa-manifest" rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="https://placehold.co/192x192/1e62d0/ffffff.png?text=SISGENTA" />
+  <link rel="apple-touch-icon" sizes="192x192" href="https://placehold.co/192x192/1e62d0/ffffff.png?text=SISGENTA" />
+  <link id="dynamic-pwa-manifest" rel="manifest" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -191,64 +193,20 @@
     // ============================================================================
     let deferredPwaPrompt = null;
 
-    function generatePwaIconDataUrl(size = 192) {
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-
-      // Background biru elegan dengan sudut membulat
-      const grad = ctx.createLinearGradient(0, 0, size, size);
-      grad.addColorStop(0, '#1e3a8a');
-      grad.addColorStop(1, '#1e62d0');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(0, 0, size, size, size * 0.2) : ctx.rect(0, 0, size, size);
-      ctx.fill();
-
-      // Lingkaran aksen emas di tengah
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = Math.max(4, size * 0.035);
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size * 0.36, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Teks Ikon SISGENTA
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `900 ${Math.round(size * 0.22)}px Poppins, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('SDN', size / 2, size * 0.43);
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = `800 ${Math.round(size * 0.11)}px Poppins, sans-serif`;
-      ctx.fillText('SISGENTA', size / 2, size * 0.63);
-
-      return canvas.toDataURL('image/png');
+    function isRunningStandalone() {
+      return (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        window.navigator.standalone === true
+      );
     }
 
     function setupDynamicPwaManifest() {
       try {
-        const icon192 = generatePwaIconDataUrl(192);
-        const icon512 = generatePwaIconDataUrl(512);
-
-        // Pasang apple-touch-icon & favicon
-        let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-        if (!appleIcon) {
-          appleIcon = document.createElement('link');
-          appleIcon.rel = 'apple-touch-icon';
-          document.head.appendChild(appleIcon);
-        }
-        appleIcon.href = icon192;
-
-        let favIcon = document.querySelector('link[rel="icon"]');
-        if (!favIcon) {
-          favIcon = document.createElement('link');
-          favIcon.rel = 'icon';
-          favIcon.type = 'image/png';
-          document.head.appendChild(favIcon);
-        }
-        favIcon.href = icon192;
+        // PENTING UNTUK ANDROID: Server WebAPK Google Chrome Android mewajibkan URL ikon HTTPS publik (bukan blob:/base64 panjang)
+        // agar pembuatan paket aplikasi (WebAPK) di layar HP Android berhasil dan tidak macet.
+        const publicIcon192 = "https://placehold.co/192x192/1e62d0/ffffff.png?text=SISGENTA";
+        const publicIcon512 = "https://placehold.co/512x512/1e62d0/ffffff.png?text=SISGENTA";
 
         const startUrl = window.location.origin + window.location.pathname;
         const manifestObj = {
@@ -256,25 +214,27 @@
           name: "SISGENTA - SDN Gedongboyountung",
           short_name: "SISGENTA",
           description: "Sistem Informasi Administrasi, Presensi QR & Jurnal Karakter SDN Gedongboyountung",
+          lang: "id-ID",
+          dir: "ltr",
           start_url: startUrl,
-          scope: startUrl,
+          scope: window.location.origin + "/",
           display: "standalone",
-          orientation: "portrait-primary",
+          orientation: "any",
           background_color: "#1e293b",
           theme_color: "#1e62d0",
+          prefer_related_applications: false,
           icons: [
-            { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
-            { src: icon192, sizes: "192x192", type: "image/png", purpose: "maskable" },
-            { src: icon512, sizes: "512x512", type: "image/png", purpose: "any" },
-            { src: icon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
+            { src: publicIcon192, sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: publicIcon192, sizes: "192x192", type: "image/png", purpose: "maskable" },
+            { src: publicIcon512, sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: publicIcon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
           ]
         };
 
         const manifestJson = JSON.stringify(manifestObj);
-        const manifestBlob = new Blob([manifestJson], { type: 'application/manifest+json' });
-        const manifestUrl = URL.createObjectURL(manifestBlob);
+        const encodedManifest = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(manifestJson);
         const linkEl = document.getElementById('dynamic-pwa-manifest');
-        if (linkEl) linkEl.setAttribute('href', manifestUrl);
+        if (linkEl) linkEl.setAttribute('href', encodedManifest);
       } catch (e) {
         console.warn('Gagal menyusun manifest PWA:', e);
       }
@@ -282,7 +242,7 @@
 
     setupDynamicPwaManifest();
 
-    // Registrasi Service Worker jika tersedia file sw.js di hosting (Vercel/GitHub Pages)
+    // Registrasi Service Worker jika tersedia file sw.js di hosting
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -299,18 +259,41 @@
     window.addEventListener('appinstalled', () => {
       deferredPwaPrompt = null;
       state.canInstallPwa = false;
-      window.showToast('🎉 Aplikasi SISGENTA berhasil di-install di perangkat Anda!');
+      window.showToast('🎉 Aplikasi SISGENTA berhasil dipasang! Cek layar utama atau laci aplikasi HP Anda.');
       renderApp();
     });
 
+    window.resetPwaInstallState = async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) await r.unregister();
+        }
+        setupDynamicPwaManifest();
+        window.showToast('Status instalasi di-reset! Muat ulang halaman lalu ketuk menu ⋮ Chrome -> Tambahkan ke layar utama.');
+        setTimeout(() => window.location.reload(), 1200);
+      } catch (e) {
+        window.location.reload();
+      }
+    };
+
     window.triggerInstallPwa = async () => {
+      if (isRunningStandalone()) {
+        window.showToast('✅ Anda sudah membuka SISGENTA dari Aplikasi Terinstal!');
+        return;
+      }
       if (deferredPwaPrompt) {
-        deferredPwaPrompt.prompt();
-        const { outcome } = await deferredPwaPrompt.userChoice;
-        if (outcome === 'accepted') {
-          deferredPwaPrompt = null;
-          state.canInstallPwa = false;
-          window.showToast('Menginstal aplikasi SISGENTA...');
+        try {
+          deferredPwaPrompt.prompt();
+          const { outcome } = await deferredPwaPrompt.userChoice;
+          if (outcome === 'accepted') {
+            deferredPwaPrompt = null;
+            state.canInstallPwa = false;
+            window.showToast('⏳ Memasang SISGENTA di HP Anda... Tunggu 5-10 detik lalu cek layar utama/laci aplikasi.');
+          }
+        } catch (err) {
+          const modal = document.getElementById('modal-pwa-install-guide');
+          if (modal) modal.classList.remove('hidden');
         }
         renderApp();
       } else {
@@ -964,36 +947,51 @@
     function renderPwaInstallGuideModal() {
       return `
         <div id="modal-pwa-install-guide" class="hidden fixed inset-0 bg-black/70 z-[100001] flex items-center justify-center p-4 no-print">
-          <div class="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 text-xs">
+          <div class="bg-white max-w-md w-full rounded-3xl p-5 sm:p-6 space-y-3.5 shadow-2xl border border-slate-200 text-xs max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
               <div class="flex items-center gap-2.5">
-                <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-lg font-bold shadow-xs">📲</div>
+                <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-lg font-bold shadow-xs shrink-0">📲</div>
                 <div>
-                  <h3 class="font-black text-sm text-slate-900">Install Aplikasi SISGENTA di HP</h3>
-                  <p class="text-[11px] text-slate-500">Pasang di layar utama HP agar tampil penuh seperti aplikasi Android</p>
+                  <h3 class="font-black text-sm text-slate-900">Solusi & Cara Pasang Aplikasi di HP</h3>
+                  <p class="text-[11px] text-slate-500">Agar ikon SISGENTA muncul di layar utama Android</p>
                 </div>
               </div>
               <button type="button" onclick="document.getElementById('modal-pwa-install-guide').classList.add('hidden')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-600 cursor-pointer">✕</button>
             </div>
 
             <div class="space-y-3">
+              <!-- Solusi jika sudah klik Install di Chrome tapi belum muncul di layar HP -->
+              <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
+                <div class="font-black text-amber-900">⚠️ Sudah Klik "Instal" di Chrome Tapi Belum Muncul di Layar HP?</div>
+                <ul class="list-disc list-inside space-y-1.5 text-slate-700 leading-relaxed text-[11px]">
+                  <li><b>Cek Laci Aplikasi (Geser Layar ke Atas):</b> Di HP Samsung/Xiaomi/ Vivo/OPPO, aplikasi baru sering masuk ke daftar semua aplikasi (ketik <b>"SISGENTA"</b> di kolom pencarian aplikasi HP).</li>
+                  <li><b>Jika di Menu ⋮ Chrome tertulis "Buka aplikasi":</b> Artinya aplikasi sebenarnya sudah terpasang di HP.</li>
+                  <li><b>Izin Pintasan Layar Utama (Xiaomi/OPPO/Vivo):</b> Tekan tahan ikon <b>Chrome</b> di HP → <b>Info Aplikasi</b> → <b>Izin lainnya</b> → Aktifkan <b>"Pintasan layar utama" (Home screen shortcuts)</b>.</li>
+                </ul>
+              </div>
+
+              <!-- Cara Buat Pintasan Langsung Anti-Gagal di Semua HP Android -->
               <div class="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
-                <div class="font-black text-blue-900">🤖 Cara Install di Google Chrome Android:</div>
-                <ol class="list-decimal list-inside space-y-1.5 text-slate-700 leading-relaxed">
-                  <li>Ketuk ikon <b>Titik Tiga (⋮)</b> di pojok kanan atas browser <b>Google Chrome</b>.</li>
-                  <li>Pilih menu <b>"Tambahkan ke layar utama"</b> (<i>Add to Home screen</i>) atau <b>"Instal aplikasi"</b> (<i>Install app</i>).</li>
-                  <li>Pilih <b>Instal / Tambahkan</b>. Ikon <b>SISGENTA</b> akan langsung muncul di menu layar utama HP Anda!</li>
+                <div class="font-black text-blue-900">✅ Cara Cepat Munculkan Ikon di Layar Depan HP (100% Berhasil):</div>
+                <ol class="list-decimal list-inside space-y-1.5 text-slate-700 leading-relaxed text-[11px]">
+                  <li>Ketuk ikon <b>Titik Tiga (⋮)</b> di pojok kanan atas browser <b>Chrome</b>.</li>
+                  <li>Pilih <b>"Tambahkan ke layar utama"</b> (<i>Add to Home screen</i>).</li>
+                  <li>Pilih <b>"Buat pintasan"</b> atau <b>"Tambahkan"</b> → ketuk <b>Tambah otomatis</b>. Ikon <b>SISGENTA</b> akan langsung tampil di layar depan HP!</li>
                 </ol>
               </div>
 
-              <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-                <div class="font-bold text-slate-800">🍎 Pengguna iPhone (Safari):</div>
-                <p class="text-slate-600 leading-relaxed">Ketuk tombol <b>Bagikan (Share ⬆️)</b> di bagian bawah Safari, lalu pilih <b>"Tambah ke Layar Utama"</b> (<i>Add to Home Screen</i>).</p>
+              <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+                <div class="text-[11px] text-slate-600 leading-tight">
+                  Tombol install di Chrome terkunci/tidak bisa diklik? Reset cache instalasi di sini:
+                </div>
+                <button type="button" onclick="window.resetPwaInstallState()" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-[11px] shrink-0 cursor-pointer shadow-2xs">
+                  🔄 Reset Install
+                </button>
               </div>
             </div>
 
             <button type="button" onclick="document.getElementById('modal-pwa-install-guide').classList.add('hidden')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold cursor-pointer shadow-xs">
-              Mengerti, Tutup Panduan
+              Mengerti & Tutup
             </button>
           </div>
         </div>
